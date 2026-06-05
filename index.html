@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#1a73e8">
+    <title>RxRemind – Prescription Reminders</title>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #0d47a1;
+            --teal: #00897B;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --text: #202124;
+            --muted: #5f6368;
+            --border: #e0e0e0;
+            --success: #34a853;
+            --danger: #ea4335;
+            --radius: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: #e8edf5;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .app {
+            width: 100%;
+            max-width: 430px;
+            min-height: 100vh;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* ── Header ───────────────────────────────────── */
+        .app-header {
+            background: linear-gradient(135deg, #1a73e8 0%, #00897B 100%);
+            padding: 18px 20px 14px;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-top { display: flex; align-items: center; justify-content: space-between; }
+        .logo { font-size: 21px; font-weight: 800; letter-spacing: 0.3px; }
+        .logo span { font-weight: 300; opacity: 0.8; }
+        .header-tag { font-size: 11px; opacity: 0.7; font-weight: 500; }
+        .steps { display: flex; gap: 5px; margin-top: 12px; }
+        .step { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); flex: 1; transition: background 0.35s; }
+        .step.active { background: #fff; }
+        .step.done { background: rgba(255,255,255,0.6); }
+
+        /* ── Screens ──────────────────────────────────── */
+        .screen {
+            display: none;
+            flex-direction: column;
+            padding: 28px 20px 24px;
+            flex: 1;
+            animation: fadeUp 0.28s ease both;
+        }
+        .screen.active { display: flex; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Type ─────────────────────────────────────── */
+        h2 { font-size: 23px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+        .sub { font-size: 14px; color: var(--muted); line-height: 1.55; margin-bottom: 22px; }
+
+        /* ── Greeting ─────────────────────────────────── */
+        .greet-emoji { font-size: 68px; text-align: center; margin: 8px 0 6px; display: block; line-height: 1; }
+        .greet-title { font-size: 34px; font-weight: 800; text-align: center; background: linear-gradient(135deg,#1a73e8,#00897B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .greet-brand { font-size: 15px; text-align: center; color: var(--muted); margin: 4px 0 6px; }
+        .greet-q { font-size: 19px; font-weight: 600; text-align: center; color: var(--text); margin: 22px 0 28px; line-height: 1.45; }
+
+        /* ── Buttons ──────────────────────────────────── */
+        .btn {
+            padding: 15px 20px; border-radius: 30px; border: none;
+            font-size: 15px; font-weight: 700; cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            font-family: inherit;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--teal));
+            color: white; width: 100%;
+            box-shadow: 0 4px 14px rgba(26,115,232,0.28);
+        }
+        .btn-outline {
+            background: white; color: var(--primary);
+            border: 2px solid var(--primary); width: 100%;
+        }
+        .btn-ghost {
+            background: var(--bg); color: var(--muted);
+            width: 100%; border: 1px solid var(--border);
+        }
+        .btn-success {
+            background: linear-gradient(135deg,#34a853,#1e7e34);
+            color: white; width: 100%;
+            box-shadow: 0 4px 14px rgba(52,168,83,0.28);
+        }
+        .btn + .btn { margin-top: 10px; }
+        .btn-row { display: flex; gap: 10px; }
+        .btn-row .btn { flex: 1; }
+
+        /* ── Upload ───────────────────────────────────── */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            background: var(--bg);
+            padding: 30px 20px;
+            text-align: center;
+            transition: border-color 0.25s, background 0.25s;
+            margin-bottom: 18px;
+            cursor: pointer;
+        }
+        .upload-zone.filled { border-color: var(--success); background: #f0fdf4; }
+        .plus-circle {
+            width: 66px; height: 66px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--teal));
+            color: white; font-size: 34px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 10px;
+            box-shadow: 0 5px 18px rgba(26,115,232,0.32);
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .plus-circle:active { transform: scale(0.92); }
+        .upload-hint { font-size: 13px; color: var(--muted); }
+        .preview-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+        .thumb-wrap { position: relative; width: 82px; height: 82px; }
+        .thumb-wrap img {
+            width: 100%; height: 100%; object-fit: cover;
+            border-radius: 10px; border: 2px solid var(--border);
+        }
+        .thumb-del {
+            position: absolute; top: -7px; right: -7px;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--danger); color: white; font-size: 11px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; border: 2px solid white; font-weight: 700;
+        }
+        .upload-action-row {
+            display: none; gap: 10px; align-items: stretch; margin-bottom: 4px;
+        }
+        .btn-add-more {
+            padding: 15px 18px; border-radius: 30px;
+            background: white; color: var(--primary);
+            border: 2px solid var(--primary);
+            font-size: 15px; font-weight: 700;
+            cursor: pointer; white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn-add-more:active { transform: scale(0.96); }
+
+        /* ── Processing ───────────────────────────────── */
+        .proc-body {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 22px; text-align: center;
+        }
+        .pulse-wrap {
+            width: 108px; height: 108px; border-radius: 50%;
+            background: rgba(26,115,232,0.08);
+            display: flex; align-items: center; justify-content: center;
+            animation: pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.09)} }
+        .spin {
+            width: 62px; height: 62px;
+            border: 4px solid rgba(26,115,232,0.15);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .proc-title { font-size: 20px; font-weight: 700; color: var(--text); }
+        .proc-step { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+        /* ── Med cards ────────────────────────────────── */
+        .med-card {
+            background: var(--bg); border-radius: var(--radius);
+            padding: 16px; margin-bottom: 12px;
+            border: 1px solid var(--border);
+        }
+        .med-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .med-name-input {
+            flex: 1; font-size: 15px; font-weight: 700; color: var(--text);
+            border: none; background: transparent; font-family: inherit;
+            border-bottom: 2px solid transparent; padding-bottom: 2px;
+        }
+        .med-name-input:focus { outline: none; border-bottom-color: var(--primary); }
+        .med-del {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #fff0f0; color: var(--danger);
+            border: 1px solid #ffd0d0; font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex-shrink: 0;
+        }
+        .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .pill {
+            padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;
+            cursor: pointer; border: 2px solid var(--border);
+            background: white; color: var(--muted);
+            transition: all 0.15s; user-select: none;
+        }
+        .pill.on { border-color: var(--primary); background: #e8f0fe; color: var(--primary); }
+        .time-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+        .time-lbl { font-size: 12px; color: var(--muted); width: 72px; flex-shrink: 0; }
+        .time-inp {
+            padding: 6px 10px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 14px; color: var(--text);
+            font-family: inherit; background: white;
+        }
+        .time-inp:focus { outline: none; border-color: var(--primary); }
+        .instr-inp {
+            width: 100%; border: 1px solid var(--border); border-radius: 10px;
+            padding: 9px 12px; font-size: 13px; font-family: inherit;
+            color: var(--muted); resize: none; background: white;
+            margin-top: 6px;
+        }
+        .instr-inp:focus { outline: none; border-color: var(--primary); }
+        .add-med {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 15px; border: 2px dashed var(--border);
+            border-radius: var(--radius); background: transparent;
+            color: var(--primary); font-size: 15px; font-weight: 700;
+            cursor: pointer; width: 100%; margin-bottom: 18px;
+            font-family: inherit;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .add-med:hover { border-color: var(--primary); background: #f0f4ff; }
+
+        /* ── Changes screen ───────────────────────────── */
+        .example-box {
+            background: #fffbea; border: 1px solid #f0d060;
+            border-radius: var(--radius); padding: 16px; margin-bottom: 18px;
+        }
+        .example-box strong { font-size: 13px; color: #856404; display: block; margin-bottom: 6px; }
+        .example-box li { font-size: 13px; color: #856404; margin-left: 16px; line-height: 2; }
+        .big-txt {
+            width: 100%; border: 2px solid var(--border);
+            border-radius: var(--radius); padding: 16px;
+            font-size: 15px; font-family: inherit; min-height: 130px;
+            resize: vertical; color: var(--text);
+        }
+        .big-txt:focus { outline: none; border-color: var(--primary); }
+
+        /* ── Calendar screen ──────────────────────────── */
+        .cal-option {
+            border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 18px; margin-bottom: 14px;
+        }
+        .cal-option h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); display: flex; align-items: center; gap: 7px; }
+        .cal-option p { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 12px; }
+
+        /* ── Done screen ──────────────────────────────── */
+        .done-icon { font-size: 84px; text-align: center; margin: 12px 0; animation: popIn 0.5s ease; display: block; }
+        @keyframes popIn { 0%{transform:scale(0.4);opacity:0} 70%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
+        .divider { height: 1px; background: var(--border); margin: 24px 0; }
+        .tag {
+            display: inline-block; padding: 4px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 700; background: #e8f0fe;
+            color: var(--primary); margin-bottom: 10px;
+        }
+
+        /* ── Misc ─────────────────────────────────────── */
+        .note {
+            background: #e8f0fe; border-radius: 10px; padding: 12px 14px;
+            font-size: 12px; color: var(--primary); line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        .spacer { flex: 1; }
+        .safe { height: max(20px, env(safe-area-inset-bottom)); }
+    </style>
+</head>
+<body>
+<div class="app">
+
+    <!-- ╔══════════════════════════════╗ -->
+    <!-- ║          HEADER              ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div class="app-header">
+        <div class="header-top">
+            <div class="logo">💊 Rx<span>Remind</span></div>
+            <div class="header-tag">Smart Prescription Reminders</div>
+        </div>
+        <div class="steps">
+            <div class="step" id="s1"></div>
+            <div class="step" id="s2"></div>
+            <div class="step" id="s3"></div>
+            <div class="step" id="s4"></div>
+            <div class="step" id="s5"></div>
+        </div>
+    </div>
+
+    <!-- ╔══════════════════════════════╗ -->
+    <!-- ║  SCREEN 1 · GREETING         ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div class="screen active" id="sc-greet">
+        <span class="greet-emoji" id="greet-emoji">🌅</span>
+        <div class="greet-title" id="greet-title">Good Morning!</div>
+        <div class="greet-brand">Welcome to RxRemind</div>
+        <div class="greet-q">Would you like to upload your prescription now?</div>
+        <div class="btn-row">
+            <button class="btn btn-primary" onclick="go('sc-upload')">Yes, let's go →</button>
+            <button class="btn btn-ghost" onclick="sayNo()">Not now</button>
+        </div>
+        <div id="no-msg" style="display:none; text-align:center; color:var(--muted); font-size:15px; line-height:1.6; margin-top:24px;">
+            No problem! Come back when you're ready. 😊<br><br>
+            <button class="btn btn-outline" style="width:auto; padding:11px 26px;" onclick="go('sc-upload')">Upload Later</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="safe"></div>
+    </div>
+
+    <!-- ╔══════════════════════════════╗ -->
+    <!-- ║  SCREEN 2 · UPLOAD           ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div class="screen" id="sc-upload">
+        <h2>📷 Upload Prescription</h2>
+        <p class="sub">Take a photo or choose screenshots from your gallery. You can add multiple images.</p>
+
+        <div class="upload-zone" id="upload-zone" onclick="trig()">
+            <div class="plus-circle" id="main-plus">+</div>
+            <div class="upload-hint">Tap to choose from your gallery</div>
+        </div>
+        <input type="file" id="file-in" accept="image/*" multiple style="display:none" onchange="onFiles(event)">
+
+        <div class="preview-grid" id="prev-grid"></div>
+
+        <div class="upload-action-row" id="upload-btns">
+            <button class="btn-add-more" onclick="trig()">+ Add more</button>
+            <button class="btn btn-primary" style="flex:1; margin:0;" onclick="doProcess()">Done →</button>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="safe"></div>
+    </div>
+
+    <!-- ╔══════════════════════════════╗ -->
+    <!-- ║  SCREEN 3 · PROCESSING       ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div class="screen" id="sc-proc">
+        <div class="proc-body">
+            <div class="pulse-wrap"><div class="spin"></div></div>
+            <div>
+                <div class="proc-title">Reading your prescription…</div>
+                <div class="proc-step" id="proc-step">Analyzing uploaded images</div>
+            </div>
+            <div class="note" style="text-align:left; max-width:340px;">
+                💡 In the full version, Claude AI will automatically read all medications and schedules directly from your prescription photos.
+            </div>
+        </div>
+        <div class="safe"></div>
+    </div>
+
+    <!-- ╔══════════════════════════════╗ -->
+    <!-- ║  SCREEN 4 · REVIEW           ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div class="screen" id="sc-review">
+        <h2>📋 Review Medications</h2>
+        <p class="sub">Fill in or edit each medication below. Tap a time slot to toggle it, then set the time.</p>
+        <div id="med-list"></div>
+        <button class="add-med" onclick="addMed()">+ Add another medication</button>
+        <button class="btn btn-primary" onclick="confirmMeds()">✓ Confirm & Continue</button>
+        <button class="btn btn-ghost" onclick="go('sc-changes')" style="margin-top:10px;">✏️ Make Changes via Text</button>
+        <div class="safe"></div>
+    </div>
+
+    <!-- ╔══════════════════════════════╗ -->
+    <!-- ║  SCREEN 5 · MAKE CHANGES     ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div class="screen" id="sc-changes">
+        <h2>✏️ Make Changes</h2>
+        <p class="sub">Describe what you'd like to change in plain language.</p>
+        <div class="example-box">
+            <strong>💡 Examples:</strong>
+            <ul>
+                <li>"Change Metformin to afternoon"</li>
+                <li>"Take Aspirin after food"</li>
+                <li>"Drink plenty of water with Lisinopril"</li>
+                <li>"Remove evening dose of Vitamin D"</li>
+                <li>"Change morning routine to 10 AM"</li>
+            </ul>
+        </div>
+        <textarea class="big-txt" id="change-txt" placeholder="Type your changes here…"></textarea>
+        <button class="btn btn-primary" onclick="applyChanges()" style="margin-top:16px;">Apply Changes →</button>
+        <button class="btn btn-ghost" onclick="go('sc-review', 3)" style="margin-top:10px;">← Back to review</button>
+        <div class="safe"></div>
+    </div>
+
+    <!-- ╔══════════════════════════════╗ -->
+    <!-- ║  SCREEN 6 · CALENDAR         ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div class="screen" id="sc-cal">
+        <h2>📅 Add to Calendar</h2>
+        <p class="sub">Your reminders are ready! Choose how to add them to your calendar.</p>
+
+        <div class="cal-option">
+            <h3>⬇️ Download &amp; Import</h3>
+            <p>Download the .ics file. Open it on your phone to import all reminders into Google Calendar, Apple Calendar, or Outlook — works on both iOS and Android.</p>
+            <button class="btn btn-primary" onclick="dlICS()">Download .ics File</button>
+        </div>
+
+        <div class="cal-option">
+            <h3>📅 Add to Google Calendar</h3>
+            <p>Opens Google Calendar directly in your browser. If you're not signed in, you'll be asked to log in first. Each reminder will open as a separate event.</p>
+            <button class="btn btn-outline" onclick="openGCal()">Open Google Calendar →</button>
+        </div>
+
+        <div class="safe"></div>
+    </div>
+
+    <!-- ╔══════════════════════════════╗ -->
+    <!-- ║  SCREEN 7 · DONE             ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div class="screen" id="sc-done">
+        <span class="done-icon">✅</span>
+        <h2 style="text-align:center;">You're all set!</h2>
+        <p style="text-align:center; color:var(--muted); font-size:15px; margin-top:8px; line-height:1.5;">
+            Your calendar reminders have been created.<br>Please review them in your calendar app.
+        </p>
+
+        <div class="divider"></div>
+        <div class="tag">Need to make changes?</div>
+        <p class="sub">Enter an instruction below to update your reminders. E.g. <em>"Change my morning routine to 10 AM"</em> or <em>"Remove evening reminder for Vitamin D"</em></p>
+        <textarea class="big-txt" id="modify-txt" placeholder="Type your instruction here…" style="min-height:95px;"></textarea>
+        <button class="btn btn-primary" onclick="applyMod()" style="margin-top:12px;">Apply Changes</button>
+
+        <div class="divider"></div>
+        <button class="btn btn-ghost" onclick="startOver()">↩ Start Over</button>
+        <div class="safe"></div>
+    </div>
+
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+let meds = [];          // array of { id, name, slots:{slot:timeStr}, instr }
+let imgs = [];          // base64 images
+
+// ════════════════════════════════════════════════════
+// GREETING
+// ════════════════════════════════════════════════════
+(function(){
+    const h = new Date().getHours();
+    const cfg = h<5?['🌙','Good Night!']:h<12?['🌅','Good Morning!']:h<17?['☀️','Good Afternoon!']:h<21?['🌆','Good Evening!']:['🌙','Good Night!'];
+    document.getElementById('greet-emoji').textContent = cfg[0];
+    document.getElementById('greet-title').textContent = cfg[1];
+})();
+
+// ════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════
+const STEP = { 'sc-greet':1,'sc-upload':2,'sc-proc':2,'sc-review':3,'sc-changes':3,'sc-cal':4,'sc-done':5 };
+function go(id, stepOverride) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById(id);
+    el.classList.add('active');
+    window.scrollTo(0,0);
+    const step = stepOverride || STEP[id] || 1;
+    for (let i=1;i<=5;i++) {
+        document.getElementById('s'+i).className = 'step'+(i<step?' done':i===step?' active':'');
+    }
+}
+
+// ════════════════════════════════════════════════════
+// SCREEN 1 – Greeting
+// ════════════════════════════════════════════════════
+function sayNo() { document.getElementById('no-msg').style.display='block'; }
+
+// ════════════════════════════════════════════════════
+// SCREEN 2 – Upload
+// ════════════════════════════════════════════════════
+function trig() { document.getElementById('file-in').click(); }
+
+function onFiles(e) {
+    Array.from(e.target.files).forEach(f => {
+        const r = new FileReader();
+        r.onload = ev => { imgs.push(ev.target.result); renderPrev(); };
+        r.readAsDataURL(f);
+    });
+    e.target.value = '';
+}
+
+function renderPrev() {
+    const g = document.getElementById('prev-grid');
+    g.innerHTML = '';
+    imgs.forEach((src,i) => {
+        const w = document.createElement('div'); w.className='thumb-wrap';
+        w.innerHTML = `<img src="${src}"><div class="thumb-del" onclick="delImg(${i})">✕</div>`;
+        g.appendChild(w);
+    });
+    const z = document.getElementById('upload-zone');
+    const b = document.getElementById('upload-btns');
+    z.classList.toggle('filled', imgs.length>0);
+    b.style.display = imgs.length>0 ? 'flex' : 'none';
+}
+
+function delImg(i) { imgs.splice(i,1); renderPrev(); }
+
+function doProcess() {
+    if (!imgs.length) { alert('Please upload at least one prescription image.'); return; }
+    go('sc-proc');
+    const steps = ['Analyzing uploaded images…','Identifying medications…','Extracting schedules…','Finalizing your list…'];
+    let si=0;
+    const el = document.getElementById('proc-step');
+    const iv = setInterval(()=>{ if(++si<steps.length) el.textContent=steps[si]; }, 650);
+    setTimeout(()=>{
+        clearInterval(iv);
+        initMeds();
+        renderMeds();
+        go('sc-review');
+    }, 2800);
+}
+
+// ════════════════════════════════════════════════════
+// SCREEN 4 – Medications
+// ════════════════════════════════════════════════════
+const SLOTS = ['Morning','Afternoon','Evening','Night'];
+const DEF_T = {Morning:'08:00',Afternoon:'13:00',Evening:'18:00',Night:'21:00'};
+
+function uid() { return Math.random().toString(36).slice(2,9); }
+
+function initMeds() {
+    // Seed with one blank entry — user fills in from their prescription
+    // (Production: replace with Claude Vision API extraction)
+    meds = [{ id:uid(), name:'', slots:{}, instr:'' }];
+}
+
+function addMed() {
+    meds.push({ id:uid(), name:'', slots:{}, instr:'' });
+    renderMeds();
+    requestAnimationFrame(()=> window.scrollTo(0, document.body.scrollHeight));
+}
+
+function delMed(id) {
+    if (meds.length===1) { alert('You need at least one medication.'); return; }
+    meds = meds.filter(m=>m.id!==id);
+    renderMeds();
+}
+
+function toggleSlot(id, slot) {
+    const m = meds.find(m=>m.id===id); if(!m) return;
+    if (m.slots[slot]) delete m.slots[slot];
+    else m.slots[slot] = DEF_T[slot];
+    renderMeds();
+}
+
+function setName(id,v)  { const m=meds.find(m=>m.id===id); if(m) m.name=v; }
+function setTime(id,sl,v){ const m=meds.find(m=>m.id===id); if(m&&m.slots) m.slots[sl]=v; }
+function setInstr(id,v) { const m=meds.find(m=>m.id===id); if(m) m.instr=v; }
+
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function renderMeds() {
+    const el = document.getElementById('med-list');
+    el.innerHTML = '';
+    meds.forEach(m => {
+        const d = document.createElement('div');
+        d.className = 'med-card';
+        d.innerHTML = `
+          <div class="med-card-top">
+            <input class="med-name-input" placeholder="💊 Medicine name…" value="${esc(m.name)}"
+              oninput="setName('${m.id}',this.value)">
+            <div class="med-del" onclick="delMed('${m.id}')">✕</div>
+          </div>
+          <div class="pills">
+            ${SLOTS.map(s=>`<div class="pill${m.slots[s]?' on':''}" onclick="toggleSlot('${m.id}','${s}')">${s}</div>`).join('')}
+          </div>
+          ${Object.entries(m.slots).map(([sl,t])=>`
+            <div class="time-row">
+              <div class="time-lbl">${sl}</div>
+              <input type="time" class="time-inp" value="${t}" onchange="setTime('${m.id}','${sl}',this.value)">
+            </div>`).join('')}
+          <textarea class="instr-inp" rows="1" placeholder="Special instructions (optional)…"
+            oninput="setInstr('${m.id}',this.value)">${esc(m.instr)}</textarea>
+        `;
+        el.appendChild(d);
+    });
+}
+
+function confirmMeds() {
+    const bad = meds.filter(m=>!m.name.trim()||!Object.keys(m.slots).length);
+    if (bad.length) { alert('Please fill in the name and select at least one time slot for each medication.'); return; }
+    go('sc-cal');
+}
+
+// ════════════════════════════════════════════════════
+// SCREEN 5 – Changes (NLP)
+// ════════════════════════════════════════════════════
+function applyChanges() {
+    const t = document.getElementById('change-txt').value.trim();
+    if (!t) { alert('Please describe the changes you want to make.'); return; }
+    nlp(t);
+    document.getElementById('change-txt').value = '';
+    renderMeds();
+    go('sc-review');
+}
+
+function applyMod() {
+    const t = document.getElementById('modify-txt').value.trim();
+    if (!t) { alert('Please enter an instruction.'); return; }
+    nlp(t);
+    document.getElementById('modify-txt').value = '';
+    alert('✅ Changes applied!\n\nRe-download the .ics file or re-open Google Calendar to update your reminders.');
+    go('sc-cal');
+}
+
+function nlp(raw) {
+    const t = raw.toLowerCase();
+
+    // Change [med] to [slot]
+    [...t.matchAll(/change\s+(.+?)\s+to\s+(morning|afternoon|evening|night)/g)].forEach(m=>{
+        const med = findMed(m[1]);
+        if (med) { const sl=cap(m[2]); med.slots={}; med.slots[sl]=DEF_T[sl]; }
+    });
+
+    // Change [slot] routine/time to [HH:MM / 10am / 10:30 PM]
+    [...t.matchAll(/change\s+(morning|afternoon|evening|night)\s+(?:routine|reminder|time|schedule)s?\s+to\s+([\d:]+\s*(?:am|pm)?)/g)].forEach(m=>{
+        const sl = cap(m[1]);
+        const nt = parseT(m[2]);
+        meds.forEach(med=>{ if(sl in med.slots) med.slots[sl]=nt; });
+    });
+
+    // [take/have] [med] after/before food
+    [...t.matchAll(/(?:take\s+)?(.+?)\s+(after|before)\s+food/g)].forEach(m=>{
+        const med=findMed(m[1]);
+        if(med) med.instr = cap(m[2])+' food'+(med.instr?'. '+med.instr:'');
+    });
+
+    // drink plenty of water with/when taking [med]
+    [...t.matchAll(/drink.+?water.+?(?:with|when(?:\s+taking)?)\s+(.+?)(?:[.,]|$)/g)].forEach(m=>{
+        const med=findMed(m[1]);
+        if(med) med.instr=(med.instr?med.instr+'. ':')+'Drink plenty of water';
+    });
+
+    // remove [slot] dose of [med] OR remove [med]
+    [...t.matchAll(/remove\s+(?:(morning|afternoon|evening|night)\s+(?:dose\s+of\s+|reminder\s+(?:for\s+)?)?)?(.+?)(?:[.,]|$)/g)].forEach(m=>{
+        if(m[1]) {
+            const sl=cap(m[1]);
+            const med=findMed(m[2])||meds[0];
+            if(med) delete med.slots[sl];
+        } else {
+            const nm=m[2].trim();
+            meds=meds.filter(med=>!med.name.toLowerCase().includes(nm)&&!nm.includes(med.name.toLowerCase()));
+        }
+    });
+
+    // add instruction for [med]: [text]
+    [...t.matchAll(/(?:add|set)\s+(?:special\s+)?instructions?\s+(?:for\s+)?(.+?):\s*(.+?)(?:[.,]|$)/g)].forEach(m=>{
+        const med=findMed(m[1]);
+        if(med) med.instr=m[2].trim();
+    });
+}
+
+function findMed(n) {
+    if(!n) return null;
+    const k=n.trim().toLowerCase().replace(/\bthis\s+(medicine|medication|med)\b/g,'').trim();
+    if(!k) return meds[0];
+    return meds.find(m=>m.name.toLowerCase().includes(k)||k.includes(m.name.toLowerCase()))||null;
+}
+
+function parseT(s) {
+    s=s.trim().toLowerCase();
+    const ap=s.match(/(am|pm)/);
+    const parts=s.replace(/(am|pm)/,'').trim().split(':');
+    let h=parseInt(parts[0])||0, mn=parseInt(parts[1])||0;
+    if(ap){ if(ap[1]==='pm'&&h!==12)h+=12; if(ap[1]==='am'&&h===12)h=0; }
+    return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
+}
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+// ════════════════════════════════════════════════════
+// SCREEN 6 – Calendar / ICS
+// ════════════════════════════════════════════════════
+function icsTs(date, timeStr) {
+    const ds = date.toISOString().slice(0,10).replace(/-/g,'');
+    const [h,m] = timeStr.split(':');
+    return `${ds}T${h}${m}00`;
+}
+
+function endTs(date, timeStr) {
+    const [h,m] = timeStr.split(':');
+    const end = new Date(date);
+    end.setHours(parseInt(h), parseInt(m)+15);
+    const ds = date.toISOString().slice(0,10).replace(/-/g,'');
+    return `${ds}T${String(end.getHours()).padStart(2,'0')}${String(end.getMinutes()).padStart(2,'0')}00`;
+}
+
+function makeICS() {
+    const today = new Date();
+    let ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RxRemind//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n`;
+    meds.forEach((m,mi)=>{
+        Object.entries(m.slots).forEach(([sl,t],si)=>{
+            const id=`rxremind-${mi}-${si}-${Date.now()}@rxremind.app`;
+            ics+=`BEGIN:VEVENT\r\n`;
+            ics+=`UID:${id}\r\n`;
+            ics+=`DTSTART:${icsTs(today,t)}\r\n`;
+            ics+=`DTEND:${endTs(today,t)}\r\n`;
+            ics+=`RRULE:FREQ=DAILY\r\n`;
+            ics+=`SUMMARY:💊 ${m.name} — ${sl}\r\n`;
+            if(m.instr) ics+=`DESCRIPTION:${m.instr}\r\n`;
+            ics+=`BEGIN:VALARM\r\nTRIGGER:-PT5M\r\nACTION:DISPLAY\r\nDESCRIPTION:Time for ${m.name}\r\nEND:VALARM\r\n`;
+            ics+=`END:VEVENT\r\n`;
+        });
+    });
+    ics+=`END:VCALENDAR`;
+    return ics;
+}
+
+function dlICS() {
+    const blob = new Blob([makeICS()],{type:'text/calendar;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'RxRemind.ics';
+    a.click();
+    setTimeout(()=>go('sc-done'),700);
+}
+
+function openGCal() {
+    const today = new Date();
+    const ds = today.toISOString().slice(0,10).replace(/-/g,'');
+    let delay = 0;
+    meds.forEach(m=>{
+        Object.entries(m.slots).forEach(([sl,t])=>{
+            const [h,mm]=t.split(':');
+            const st=`${ds}T${h}${mm}00`;
+            const end=new Date(today); end.setHours(parseInt(h),parseInt(mm)+15);
+            const et=`${ds}T${String(end.getHours()).padStart(2,'0')}${String(end.getMinutes()).padStart(2,'0')}00`;
+            const url=`https://calendar.google.com/calendar/render?action=TEMPLATE`
+                +`&text=${encodeURIComponent('💊 '+m.name+' — '+sl)}`
+                +`&dates=${st}/${et}`
+                +`&recur=${encodeURIComponent('RRULE:FREQ=DAILY')}`
+                +(m.instr?`&details=${encodeURIComponent(m.instr)}`:'');
+            setTimeout(()=>window.open(url,'_blank'), delay);
+            delay+=350;
+        });
+    });
+    setTimeout(()=>go('sc-done'),700);
+}
+
+// ════════════════════════════════════════════════════
+// RESET
+// ════════════════════════════════════════════════════
+function startOver() {
+    meds=[]; imgs=[];
+    document.getElementById('prev-grid').innerHTML='';
+    document.getElementById('upload-btns').style.display='none';
+    document.getElementById('upload-zone').classList.remove('filled');
+    document.getElementById('no-msg').style.display='none';
+    go('sc-greet');
+}
+</script>
+</body>
+</html>
