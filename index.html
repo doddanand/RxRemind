@@ -64,12 +64,9 @@
             flex-direction: column;
             padding: 28px 20px 24px;
             flex: 1;
-            animation: fadeUp 0.28s ease both;
         }
-        .screen.active { display: flex; }
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
+        .screen.active {
+            display: flex;
         }
 
         /* ── Type ─────────────────────────────────────── */
@@ -256,12 +253,23 @@
         .big-txt:focus { outline: none; border-color: var(--primary); }
 
         /* ── Calendar screen ──────────────────────────── */
+        .cal-options-label { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 18px; }
         .cal-option {
-            border: 1px solid var(--border); border-radius: var(--radius);
-            padding: 18px; margin-bottom: 14px;
+            border: 2px solid var(--border); border-radius: var(--radius);
+            padding: 20px; margin-bottom: 14px; position: relative;
+            transition: border-color 0.2s;
+        }
+        .cal-option.recommended { border-color: var(--success); background: #f6fef8; }
+        .cal-badge {
+            position: absolute; top: -11px; left: 20px;
+            background: var(--success); color: white;
+            font-size: 11px; font-weight: 700; padding: 3px 10px;
+            border-radius: 20px; letter-spacing: 0.3px;
         }
         .cal-option h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); display: flex; align-items: center; gap: 7px; }
-        .cal-option p { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 12px; }
+        .cal-option p { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 14px; }
+        .cal-option .works-on { font-size: 11px; color: var(--muted); margin-top: -10px; margin-bottom: 12px; }
+        .cal-divider { text-align: center; font-size: 12px; color: #bbb; margin: 4px 0 18px; letter-spacing: 1px; }
 
         /* ── Done screen ──────────────────────────────── */
         .done-icon { font-size: 84px; text-align: center; margin: 12px 0; animation: popIn 0.5s ease; display: block; }
@@ -304,6 +312,18 @@
     </div>
 
     <!-- ╔══════════════════════════════╗ -->
+    <!-- ║  API KEY SETUP (first run)   ║ -->
+    <!-- ╚══════════════════════════════╝ -->
+    <div id="api-banner" style="display:none; background:#fff8e1; border-bottom:1px solid #ffe082; padding:14px 20px;">
+        <div style="font-size:13px; font-weight:700; color:#856404; margin-bottom:8px;">⚙️ Setup required</div>
+        <div style="font-size:12px; color:#856404; margin-bottom:10px; line-height:1.5;">Enter your Anthropic API key to enable AI prescription reading. This is only needed once per session.</div>
+        <div style="display:flex; gap:8px;">
+            <input id="api-key-inp" type="password" placeholder="sk-ant-..." style="flex:1; padding:9px 12px; border:1px solid #f0d060; border-radius:8px; font-size:13px; font-family:inherit;">
+            <button onclick="saveApiKey()" style="padding:9px 16px; background:#1a73e8; color:white; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;">Save</button>
+        </div>
+    </div>
+
+    <!-- ╔══════════════════════════════╗ -->
     <!-- ║  SCREEN 1 · GREETING         ║ -->
     <!-- ╚══════════════════════════════╝ -->
     <div class="screen active" id="sc-greet">
@@ -342,6 +362,10 @@
             <button class="btn-add-more" onclick="trig()">+ Add more</button>
             <button class="btn btn-primary" style="flex:1; margin:0;" onclick="doProcess()">Done →</button>
         </div>
+        <div id="demo-btn-wrap" style="display:none; margin-top:14px;">
+            <div style="text-align:center; font-size:12px; color:var(--muted); margin-bottom:8px;">— or, testing without an API key? —</div>
+            <button class="btn btn-ghost" onclick="doDemo()" style="font-size:13px;">🧪 Use demo prescription data</button>
+        </div>
 
         <div class="spacer"></div>
         <div class="safe"></div>
@@ -358,7 +382,7 @@
                 <div class="proc-step" id="proc-step">Analyzing uploaded images</div>
             </div>
             <div class="note" style="text-align:left; max-width:340px;">
-                💡 In the full version, Claude AI will automatically read all medications and schedules directly from your prescription photos.
+                💡 Claude AI is reading your prescription and extracting all medications and schedules automatically…
             </div>
         </div>
         <div class="safe"></div>
@@ -404,17 +428,40 @@
     <!-- ╚══════════════════════════════╝ -->
     <div class="screen" id="sc-cal">
         <h2>📅 Add to Calendar</h2>
-        <p class="sub">Your reminders are ready! Choose how to add them to your calendar.</p>
+        <p class="sub">Your reminders are ready! Pick one of the two options below.</p>
 
-        <div class="cal-option">
-            <h3>⬇️ Download &amp; Import</h3>
-            <p>Download the .ics file. Open it on your phone to import all reminders into Google Calendar, Apple Calendar, or Outlook — works on both iOS and Android.</p>
-            <button class="btn btn-primary" onclick="dlICS()">Download .ics File</button>
+        <!-- Duration picker -->
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+                <div style="font-size:14px; font-weight:700; color:var(--text);">⏱ Duration</div>
+                <div style="font-size:12px; color:var(--muted); margin-top:2px;">How many days to create reminders for?</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                <button onclick="changeDays(-1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);">−</button>
+                <input type="number" id="days-input" value="30" min="1" max="365"
+                    style="width:56px;text-align:center;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:15px;font-weight:700;font-family:inherit;color:var(--text);"
+                    onchange="setDays(this.value)">
+                <button onclick="changeDays(1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);">+</button>
+                <span style="font-size:13px;color:var(--muted);">days</span>
+            </div>
         </div>
 
+        <!-- Option 1: .ics download -->
+        <div class="cal-option recommended">
+            <div class="cal-badge">✓ Recommended</div>
+            <h3>⬇️ Download to Phone Calendar</h3>
+            <p>Downloads a calendar file (.ics) that adds all your medication reminders directly to your phone's default calendar — including pop-up notifications 5 minutes before each dose.</p>
+            <div class="works-on">📱 Works on: iPhone (Apple Calendar) &nbsp;·&nbsp; Android (Google Calendar) &nbsp;·&nbsp; Outlook</div>
+            <button class="btn btn-success" onclick="dlICS()">⬇️ Download .ics File</button>
+        </div>
+
+        <div class="cal-divider">— or —</div>
+
+        <!-- Option 2: Google Calendar web -->
         <div class="cal-option">
             <h3>📅 Add to Google Calendar</h3>
-            <p>Opens Google Calendar directly in your browser. If you're not signed in, you'll be asked to log in first. Each reminder will open as a separate event.</p>
+            <p>Opens Google Calendar in your browser. You'll be asked to sign in if you haven't already. Each medication reminder opens as a separate event for you to review and confirm.</p>
+            <div class="works-on">🌐 Best for: desktop or when already signed into Google</div>
             <button class="btn btn-outline" onclick="openGCal()">Open Google Calendar →</button>
         </div>
 
@@ -446,20 +493,37 @@
 
 <script>
 // ════════════════════════════════════════════════════
+// CONFIG — fill in your Anthropic API key before sharing
+// ════════════════════════════════════════════════════
+const CLAUDE_API_KEY = '';   // ← paste your key here, e.g. 'sk-ant-...'
+
+// ════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════
 let meds = [];          // array of { id, name, slots:{slot:timeStr}, instr }
 let imgs = [];          // base64 images
+let apiKey = CLAUDE_API_KEY;
+let eventDays = 30;     // number of days to create calendar events for
 
 // ════════════════════════════════════════════════════
-// GREETING
+// GREETING + API KEY INIT
 // ════════════════════════════════════════════════════
 (function(){
     const h = new Date().getHours();
     const cfg = h<5?['🌙','Good Night!']:h<12?['🌅','Good Morning!']:h<17?['☀️','Good Afternoon!']:h<21?['🌆','Good Evening!']:['🌙','Good Night!'];
     document.getElementById('greet-emoji').textContent = cfg[0];
     document.getElementById('greet-title').textContent = cfg[1];
+    // Show API key banner if no key configured
+    if (!apiKey) document.getElementById('api-banner').style.display = 'block';
 })();
+
+function saveApiKey() {
+    const v = document.getElementById('api-key-inp').value.trim();
+    if (!v.startsWith('sk-ant-')) { alert('Please enter a valid Anthropic API key (starts with sk-ant-…)'); return; }
+    apiKey = v;
+    document.getElementById('api-banner').style.display = 'none';
+    document.getElementById('api-key-inp').value = '';
+}
 
 // ════════════════════════════════════════════════════
 // NAVIGATION
@@ -505,25 +569,139 @@ function renderPrev() {
     });
     const z = document.getElementById('upload-zone');
     const b = document.getElementById('upload-btns');
+    const d = document.getElementById('demo-btn-wrap');
     z.classList.toggle('filled', imgs.length>0);
     b.style.display = imgs.length>0 ? 'flex' : 'none';
+    d.style.display = imgs.length>0 ? 'block' : 'none';
 }
 
 function delImg(i) { imgs.splice(i,1); renderPrev(); }
 
-function doProcess() {
+async function doProcess() {
     if (!imgs.length) { alert('Please upload at least one prescription image.'); return; }
+    if (!apiKey) { alert('Please enter your Anthropic API key first (see the setup banner at the top).'); return; }
+    go('sc-proc');
+
+    const steps = ['Analyzing uploaded images…','Identifying medications…','Extracting schedules…','Finalizing your list…'];
+    let si = 0;
+    const el = document.getElementById('proc-step');
+    const iv = setInterval(()=>{ if(++si<steps.length) el.textContent=steps[si]; }, 700);
+
+    try {
+        const extracted = await callClaude(imgs);
+        clearInterval(iv);
+        meds = extracted.length ? extracted : [{ id:uid(), name:'', slots:{}, instr:'' }];
+        renderMeds();
+        go('sc-review');
+    } catch(e) {
+        clearInterval(iv);
+        console.error(e);
+        alert('Could not read prescription automatically.\n\nError: ' + e.message + '\n\nYou can enter your medications manually.');
+        meds = [{ id:uid(), name:'', slots:{}, instr:'' }];
+        renderMeds();
+        go('sc-review');
+    }
+}
+
+function doDemo() {
     go('sc-proc');
     const steps = ['Analyzing uploaded images…','Identifying medications…','Extracting schedules…','Finalizing your list…'];
-    let si=0;
+    let si = 0;
     const el = document.getElementById('proc-step');
     const iv = setInterval(()=>{ if(++si<steps.length) el.textContent=steps[si]; }, 650);
     setTimeout(()=>{
         clearInterval(iv);
-        initMeds();
+        meds = [
+            { id:uid(), name:'Sebamed Foaming Facewash', slots:{Morning:'08:00', Night:'21:00'}, instr:'' },
+            { id:uid(), name:'Ankclear Serum',           slots:{Night:'21:00'},                  instr:'2 pumps' },
+            { id:uid(), name:'Kev Moist Moisturiser',    slots:{Night:'21:15'},                  instr:'Apply 5 minutes after Ankclear Serum' },
+            { id:uid(), name:'Eucerin OC Sunscreen',     slots:{Morning:'08:00'},                instr:'Apply to face' },
+        ];
         renderMeds();
         go('sc-review');
     }, 2800);
+}
+
+async function callClaude(images) {
+    const imgContent = images.map(img => {
+        const mt = img.match(/^data:(image\/\w+);base64,/);
+        const mediaType = mt ? mt[1] : 'image/jpeg';
+        return { type:'image', source:{ type:'base64', media_type:mediaType, data:img.split(',')[1] } };
+    });
+
+    const prompt = `You are a medical assistant specialising in reading handwritten and printed prescriptions, including Indian-format prescriptions.
+
+Return ONLY a valid JSON array — no explanation, no markdown, just raw JSON.
+
+Format:
+[
+  {
+    "name": "Exact Medicine Name",
+    "slots": {
+      "Morning": "08:00",
+      "Night": "21:00"
+    },
+    "instr": "special instruction or empty string"
+  }
+]
+
+PRESCRIPTION NOTATION — read these carefully:
+
+Columns always follow the order: Morning (M) → Afternoon (A) → Evening (E) → Night (N).
+Some prescriptions use only 3 columns: Morning → Afternoon → Night (no Evening).
+
+A dose is ACTIVE when the cell contains: 1, x, X, ✓, ✗, √, a tick, a check, or any non-zero non-dash symbol.
+A dose is SKIPPED when the cell contains: 0, o, O, -, –, or is blank.
+
+Examples:
+- "1-0-1" → Morning + Night
+- "x-o-x" → Morning + Night
+- "1-0-0-1" → Morning + Night (4-column M-A-E-N)
+- "1-1-0-0" → Morning + Afternoon
+- "0-0-0-1" → Night only
+- "M—N" or "M→N" → Morning + Night
+- "M-A" → Morning + Afternoon
+- A tick or arrow drawn between M and N → Morning + Night
+- A horizontal line connecting M to N → Morning + Night
+- "BD" or "b.d." → twice daily = Morning + Night
+- "TDS" or "t.d.s." → three times daily = Morning + Afternoon + Night
+- "OD" or "o.d." → once daily = Morning
+- "HS" → at bedtime = Night
+- "SOS" → as needed (skip — do not add to schedule)
+
+Other rules:
+- Valid slot keys: Morning, Afternoon, Evening, Night
+- Default times: Morning=08:00, Afternoon=13:00, Evening=18:00, Night=21:00
+- Capture special instructions: After food, Before food, With water, Empty stomach, etc.
+- Include ALL medications listed on the prescription
+- If duration is mentioned (e.g. "1 month", "30 days"), add it to instr`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+            'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+            model: 'claude-opus-4-6',
+            max_tokens: 2048,
+            messages: [{ role:'user', content:[ ...imgContent, { type:'text', text:prompt } ] }]
+        })
+    });
+
+    if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error?.message || 'API request failed');
+    }
+
+    const data = await resp.json();
+    const text = data.content[0].text.trim();
+    // Strip markdown code fences if present
+    const clean = text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+    const parsed = JSON.parse(clean);
+    return parsed.map(m => ({ id:uid(), name:m.name||'', slots:m.slots||{}, instr:m.instr||'' }));
 }
 
 // ════════════════════════════════════════════════════
@@ -533,12 +711,6 @@ const SLOTS = ['Morning','Afternoon','Evening','Night'];
 const DEF_T = {Morning:'08:00',Afternoon:'13:00',Evening:'18:00',Night:'21:00'};
 
 function uid() { return Math.random().toString(36).slice(2,9); }
-
-function initMeds() {
-    // Seed with one blank entry — user fills in from their prescription
-    // (Production: replace with Claude Vision API extraction)
-    meds = [{ id:uid(), name:'', slots:{}, instr:'' }];
-}
 
 function addMed() {
     meds.push({ id:uid(), name:'', slots:{}, instr:'' });
@@ -560,7 +732,7 @@ function toggleSlot(id, slot) {
 }
 
 function setName(id,v)  { const m=meds.find(m=>m.id===id); if(m) m.name=v; }
-function setTime(id,sl,v){ const m=meds.find(m=>m.id===id); if(m&&m.slots) m.slots[sl]=v; }
+function setTime(id,sl,v){ const m=meds.find(m=>m.id===id); if(m&&m.slots&&m.slots.hasOwnProperty(sl)) m.slots[sl]=v; }
 function setInstr(id,v) { const m=meds.find(m=>m.id===id); if(m) m.instr=v; }
 
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
@@ -590,6 +762,17 @@ function renderMeds() {
         `;
         el.appendChild(d);
     });
+}
+
+function changeDays(delta) {
+    const inp = document.getElementById('days-input');
+    const val = Math.min(365, Math.max(1, (parseInt(inp.value) || 30) + delta));
+    inp.value = val;
+    eventDays = val;
+}
+function setDays(val) {
+    eventDays = Math.min(365, Math.max(1, parseInt(val) || 30));
+    document.getElementById('days-input').value = eventDays;
 }
 
 function confirmMeds() {
@@ -644,7 +827,7 @@ function nlp(raw) {
     // drink plenty of water with/when taking [med]
     [...t.matchAll(/drink.+?water.+?(?:with|when(?:\s+taking)?)\s+(.+?)(?:[.,]|$)/g)].forEach(m=>{
         const med=findMed(m[1]);
-        if(med) med.instr=(med.instr?med.instr+'. ':')+'Drink plenty of water';
+        if(med) med.instr=(med.instr?med.instr+'. ':'')+'Drink plenty of water';
     });
 
     // remove [slot] dose of [med] OR remove [med]
@@ -701,56 +884,109 @@ function endTs(date, timeStr) {
     return `${ds}T${String(end.getHours()).padStart(2,'0')}${String(end.getMinutes()).padStart(2,'0')}00`;
 }
 
-function makeICS() {
-    const today = new Date();
-    let ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RxRemind//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n`;
-    meds.forEach((m,mi)=>{
-        Object.entries(m.slots).forEach(([sl,t],si)=>{
-            const id=`rxremind-${mi}-${si}-${Date.now()}@rxremind.app`;
-            ics+=`BEGIN:VEVENT\r\n`;
-            ics+=`UID:${id}\r\n`;
-            ics+=`DTSTART:${icsTs(today,t)}\r\n`;
-            ics+=`DTEND:${endTs(today,t)}\r\n`;
-            ics+=`RRULE:FREQ=DAILY\r\n`;
-            ics+=`SUMMARY:💊 ${m.name} — ${sl}\r\n`;
-            if(m.instr) ics+=`DESCRIPTION:${m.instr}\r\n`;
-            ics+=`BEGIN:VALARM\r\nTRIGGER:-PT5M\r\nACTION:DISPLAY\r\nDESCRIPTION:Time for ${m.name}\r\nEND:VALARM\r\n`;
-            ics+=`END:VEVENT\r\n`;
+// Group medications by slot → one event per slot
+function groupBySlot() {
+    const slotOrder = ['Morning','Afternoon','Evening','Night'];
+    const map = {};
+    meds.forEach(m => {
+        Object.entries(m.slots).forEach(([slot, time]) => {
+            if (!map[slot]) map[slot] = { time, entries: [] };
+            map[slot].entries.push({ name: m.name, instr: m.instr });
         });
     });
-    ics+=`END:VCALENDAR`;
+    // Return in canonical order
+    return slotOrder.filter(s => map[s]).map(s => ({ slot: s, time: map[s].time, entries: map[s].entries }));
+}
+
+function makeICS() {
+    const today = new Date();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    let ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RxRemind//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:RxRemind Medications\r\nX-WR-TIMEZONE:${tz}\r\n`;
+
+    groupBySlot().forEach((group, gi) => {
+        const { slot, time, entries } = group;
+        const id = `rxremind-${slot.toLowerCase()}-${Date.now()}-${gi}@rxremind.app`;
+
+        const names = entries.map(e => e.name).join(', ');
+        const summary = entries.length > 1 ? `💊 ${slot} Routine` : `💊 ${slot} — ${names}`;
+
+        // Build description: each med on its own line with instruction if any
+        const descLines = entries.map(e => e.instr ? `• ${e.name} (${e.instr})` : `• ${e.name}`);
+        const desc = descLines.join('\\n');
+
+        // Alarm text lists all meds
+        const alarmText = `Time for your ${slot.toLowerCase()} medications: ${names}`;
+
+        ics += `BEGIN:VEVENT\r\n`;
+        ics += `UID:${id}\r\n`;
+        ics += `DTSTART;TZID=${tz}:${icsTs(today, time)}\r\n`;
+        ics += `DTEND;TZID=${tz}:${endTs(today, time)}\r\n`;
+        ics += `RRULE:FREQ=DAILY;COUNT=${eventDays}\r\n`;
+        ics += `SUMMARY:${summary}\r\n`;
+        ics += `DESCRIPTION:${desc}\r\n`;
+        ics += `BEGIN:VALARM\r\nTRIGGER:-PT5M\r\nACTION:DISPLAY\r\nDESCRIPTION:${alarmText}\r\nEND:VALARM\r\n`;
+        ics += `BEGIN:VALARM\r\nTRIGGER:PT0S\r\nACTION:DISPLAY\r\nDESCRIPTION:${alarmText}\r\nEND:VALARM\r\n`;
+        ics += `END:VEVENT\r\n`;
+    });
+
+    ics += `END:VCALENDAR`;
     return ics;
 }
 
 function dlICS() {
-    const blob = new Blob([makeICS()],{type:'text/calendar;charset=utf-8'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'RxRemind.ics';
-    a.click();
-    setTimeout(()=>go('sc-done'),700);
+    const icsData = makeICS();
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (isIOS) {
+        // iOS Safari: blob download via <a> works on iOS 13+; fallback to data URI
+        try {
+            const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'RxRemind.ics';
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            setTimeout(()=>URL.revokeObjectURL(url), 1000);
+        } catch(e) {
+            // Fallback: open as data URI so iOS offers to open in Calendar
+            window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsData);
+        }
+    } else {
+        // Android / Desktop
+        const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'RxRemind.ics'; a.click();
+    }
+    setTimeout(()=>go('sc-done'), 800);
 }
 
 function openGCal() {
     const today = new Date();
     const ds = today.toISOString().slice(0,10).replace(/-/g,'');
     let delay = 0;
-    meds.forEach(m=>{
-        Object.entries(m.slots).forEach(([sl,t])=>{
-            const [h,mm]=t.split(':');
-            const st=`${ds}T${h}${mm}00`;
-            const end=new Date(today); end.setHours(parseInt(h),parseInt(mm)+15);
-            const et=`${ds}T${String(end.getHours()).padStart(2,'0')}${String(end.getMinutes()).padStart(2,'0')}00`;
-            const url=`https://calendar.google.com/calendar/render?action=TEMPLATE`
-                +`&text=${encodeURIComponent('💊 '+m.name+' — '+sl)}`
-                +`&dates=${st}/${et}`
-                +`&recur=${encodeURIComponent('RRULE:FREQ=DAILY')}`
-                +(m.instr?`&details=${encodeURIComponent(m.instr)}`:'');
-            setTimeout(()=>window.open(url,'_blank'), delay);
-            delay+=350;
-        });
+
+    groupBySlot().forEach(({ slot, time, entries }) => {
+        const [h, mm] = time.split(':');
+        const st = `${ds}T${h}${mm}00`;
+        const endD = new Date(today); endD.setHours(parseInt(h), parseInt(mm)+15);
+        const et = `${ds}T${String(endD.getHours()).padStart(2,'0')}${String(endD.getMinutes()).padStart(2,'0')}00`;
+
+        const names = entries.map(e => e.name).join(', ');
+        const title = entries.length > 1 ? `💊 ${slot} Routine` : `💊 ${slot} — ${names}`;
+        const details = entries.map(e => e.instr ? `${e.name}: ${e.instr}` : e.name).join('\n');
+
+        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE`
+            + `&text=${encodeURIComponent(title)}`
+            + `&dates=${st}/${et}`
+            + `&recur=${encodeURIComponent('RRULE:FREQ=DAILY;COUNT='+eventDays)}`
+            + `&details=${encodeURIComponent(details)}`;
+
+        setTimeout(() => window.open(url, '_blank'), delay);
+        delay += 400;
     });
-    setTimeout(()=>go('sc-done'),700);
+
+    setTimeout(() => go('sc-done'), 700);
 }
 
 // ════════════════════════════════════════════════════
