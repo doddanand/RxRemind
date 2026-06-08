@@ -77,7 +77,23 @@
         .greet-emoji { font-size: 68px; text-align: center; margin: 8px 0 6px; display: block; line-height: 1; }
         .greet-title { font-size: 34px; font-weight: 800; text-align: center; background: linear-gradient(135deg,#1a73e8,#00897B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .greet-brand { font-size: 15px; text-align: center; color: var(--muted); margin: 4px 0 6px; }
-        .greet-q { font-size: 19px; font-weight: 600; text-align: center; color: var(--text); margin: 22px 0 28px; line-height: 1.45; }
+        .greet-q { font-size: 19px; font-weight: 600; text-align: center; color: var(--text); margin: 18px 0 20px; line-height: 1.45; }
+
+        /* ── Privacy notice ───────────────────────────── */
+        .privacy-note {
+            background: #f0f7ff;
+            border: 1px solid #c5deff;
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 12px;
+            color: #1a5fb4;
+            line-height: 1.55;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .privacy-note-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
 
         /* ── Buttons ──────────────────────────────────── */
         .btn {
@@ -219,6 +235,22 @@
             font-family: inherit; background: white;
         }
         .time-inp:focus { outline: none; border-color: var(--primary); }
+
+        /* ── Schedule / duration fields ───────────────── */
+        .sched-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+        .freq-sel {
+            flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 13px; color: var(--text);
+            font-family: inherit; background: white; cursor: pointer;
+        }
+        .freq-sel:focus { outline: none; border-color: var(--primary); }
+        .dur-inp {
+            width: 60px; padding: 6px 8px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 14px; font-weight: 700; color: var(--text);
+            font-family: inherit; background: white; text-align: center;
+        }
+        .dur-inp:focus { outline: none; border-color: var(--primary); }
+
         .instr-inp {
             width: 100%; border: 1px solid var(--border); border-radius: 10px;
             padding: 9px 12px; font-size: 13px; font-family: inherit;
@@ -253,23 +285,14 @@
         .big-txt:focus { outline: none; border-color: var(--primary); }
 
         /* ── Calendar screen ──────────────────────────── */
-        .cal-options-label { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 18px; }
         .cal-option {
-            border: 2px solid var(--border); border-radius: var(--radius);
+            border: 2px solid var(--success); border-radius: var(--radius);
             padding: 20px; margin-bottom: 14px; position: relative;
-            transition: border-color 0.2s;
-        }
-        .cal-option.recommended { border-color: var(--success); background: #f6fef8; }
-        .cal-badge {
-            position: absolute; top: -11px; left: 20px;
-            background: var(--success); color: white;
-            font-size: 11px; font-weight: 700; padding: 3px 10px;
-            border-radius: 20px; letter-spacing: 0.3px;
+            background: #f6fef8;
         }
         .cal-option h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); display: flex; align-items: center; gap: 7px; }
         .cal-option p { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 14px; }
         .cal-option .works-on { font-size: 11px; color: var(--muted); margin-top: -10px; margin-bottom: 12px; }
-        .cal-divider { text-align: center; font-size: 12px; color: #bbb; margin: 4px 0 18px; letter-spacing: 1px; }
 
         /* ── Done screen ──────────────────────────────── */
         .done-icon { font-size: 84px; text-align: center; margin: 12px 0; animation: popIn 0.5s ease; display: block; }
@@ -331,6 +354,13 @@
         <div class="greet-title" id="greet-title">Good Morning!</div>
         <div class="greet-brand">Welcome to RxRemind</div>
         <div class="greet-q">Would you like to upload your prescription now?</div>
+
+        <!-- Privacy notice -->
+        <div class="privacy-note">
+            <span class="privacy-note-icon">🔒</span>
+            <span>Your <strong>personal information</strong> (name, age, address) is <strong>never sent to AI</strong>. Only medication names, dosage and schedule details are processed.</span>
+        </div>
+
         <div class="btn-row">
             <button class="btn btn-primary" onclick="go('sc-upload')">Yes, let's go →</button>
             <button class="btn btn-ghost" onclick="sayNo()">Not now</button>
@@ -393,7 +423,7 @@
     <!-- ╚══════════════════════════════╝ -->
     <div class="screen" id="sc-review">
         <h2>📋 Review Medications</h2>
-        <p class="sub">Fill in or edit each medication below. Tap a time slot to toggle it, then set the time.</p>
+        <p class="sub">Check each medication below. Adjust time slots, schedule, and duration as needed.</p>
         <div id="med-list"></div>
         <button class="add-med" onclick="addMed()">+ Add another medication</button>
         <button class="btn btn-primary" onclick="confirmMeds()">✓ Confirm & Continue</button>
@@ -415,6 +445,8 @@
                 <li>"Drink plenty of water with Lisinopril"</li>
                 <li>"Remove evening dose of Vitamin D"</li>
                 <li>"Change morning routine to 10 AM"</li>
+                <li>"Change Amoxicillin to every 2 days"</li>
+                <li>"Set duration of Metformin to 60 days"</li>
             </ul>
         </div>
         <textarea class="big-txt" id="change-txt" placeholder="Type your changes here…"></textarea>
@@ -428,41 +460,13 @@
     <!-- ╚══════════════════════════════╝ -->
     <div class="screen" id="sc-cal">
         <h2>📅 Add to Calendar</h2>
-        <p class="sub">Your reminders are ready! Pick one of the two options below.</p>
+        <p class="sub">Your reminders are ready! Download the calendar file to add all your medication reminders to your phone.</p>
 
-        <!-- Duration picker -->
-        <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
-            <div>
-                <div style="font-size:14px; font-weight:700; color:var(--text);">⏱ Duration</div>
-                <div style="font-size:12px; color:var(--muted); margin-top:2px;">How many days to create reminders for?</div>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-                <button onclick="changeDays(-1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);">−</button>
-                <input type="number" id="days-input" value="30" min="1" max="365"
-                    style="width:56px;text-align:center;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:15px;font-weight:700;font-family:inherit;color:var(--text);"
-                    onchange="setDays(this.value)">
-                <button onclick="changeDays(1)" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);">+</button>
-                <span style="font-size:13px;color:var(--muted);">days</span>
-            </div>
-        </div>
-
-        <!-- Option 1: .ics download -->
-        <div class="cal-option recommended">
-            <div class="cal-badge">✓ Recommended</div>
-            <h3>⬇️ Download to Phone Calendar</h3>
-            <p>Downloads a calendar file (.ics) that adds all your medication reminders directly to your phone's default calendar — including pop-up notifications 5 minutes before each dose.</p>
-            <div class="works-on">📱 Works on: iPhone (Apple Calendar) &nbsp;·&nbsp; Android (Google Calendar) &nbsp;·&nbsp; Outlook</div>
-            <button class="btn btn-success" onclick="dlICS()">⬇️ Download .ics File</button>
-        </div>
-
-        <div class="cal-divider">— or —</div>
-
-        <!-- Option 2: Google Calendar web -->
         <div class="cal-option">
-            <h3>📅 Add to Google Calendar</h3>
-            <p>Opens Google Calendar in your browser. You'll be asked to sign in if you haven't already. Each medication reminder opens as a separate event for you to review and confirm.</p>
-            <div class="works-on">🌐 Best for: desktop or when already signed into Google</div>
-            <button class="btn btn-outline" onclick="openGCal()">Open Google Calendar →</button>
+            <h3>⬇️ Download to Phone Calendar</h3>
+            <p>Downloads a calendar file (.ics) that adds all your medication reminders directly to your phone's default calendar — including pop-up notifications 5 minutes before each dose. Each medication's individual duration and frequency is honoured.</p>
+            <div class="works-on">📱 Works on: iPhone (Apple Calendar) &nbsp;·&nbsp; Android (Google Calendar) &nbsp;·&nbsp; Outlook &nbsp;·&nbsp; Any calendar app</div>
+            <button class="btn btn-success" onclick="dlICS()">⬇️ Download .ics File</button>
         </div>
 
         <div class="safe"></div>
@@ -480,7 +484,7 @@
 
         <div class="divider"></div>
         <div class="tag">Need to make changes?</div>
-        <p class="sub">Enter an instruction below to update your reminders. E.g. <em>"Change my morning routine to 10 AM"</em> or <em>"Remove evening reminder for Vitamin D"</em></p>
+        <p class="sub">Enter an instruction below to update your reminders. E.g. <em>"Change my morning routine to 10 AM"</em> or <em>"Change Amoxicillin to every 2 days for 14 days"</em></p>
         <textarea class="big-txt" id="modify-txt" placeholder="Type your instruction here…" style="min-height:95px;"></textarea>
         <button class="btn btn-primary" onclick="applyMod()" style="margin-top:12px;">Apply Changes</button>
 
@@ -500,10 +504,12 @@ const CLAUDE_API_KEY = '';   // ← paste your key here, e.g. 'sk-ant-...'
 // ════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════
-let meds = [];          // array of { id, name, slots:{slot:timeStr}, instr }
-let imgs = [];          // base64 images
+// med: { id, name, slots:{slot:timeStr}, instr, duration:number|null, frequency:string }
+// frequency values: 'daily' | 'every_2_days' | 'every_3_days' | 'weekly' | 'monthly'
+let meds = [];
+let imgs = [];
 let apiKey = CLAUDE_API_KEY;
-let eventDays = 30;     // number of days to create calendar events for
+const DEFAULT_DURATION = 30;
 
 // ════════════════════════════════════════════════════
 // GREETING + API KEY INIT
@@ -513,7 +519,6 @@ let eventDays = 30;     // number of days to create calendar events for
     const cfg = h<5?['🌙','Good Night!']:h<12?['🌅','Good Morning!']:h<17?['☀️','Good Afternoon!']:h<21?['🌆','Good Evening!']:['🌙','Good Night!'];
     document.getElementById('greet-emoji').textContent = cfg[0];
     document.getElementById('greet-title').textContent = cfg[1];
-    // Show API key banner if no key configured
     if (!apiKey) document.getElementById('api-banner').style.display = 'block';
 })();
 
@@ -590,14 +595,14 @@ async function doProcess() {
     try {
         const extracted = await callClaude(imgs);
         clearInterval(iv);
-        meds = extracted.length ? extracted : [{ id:uid(), name:'', slots:{}, instr:'' }];
+        meds = extracted.length ? extracted : [newMed()];
         renderMeds();
         go('sc-review');
     } catch(e) {
         clearInterval(iv);
         console.error(e);
         alert('Could not read prescription automatically.\n\nError: ' + e.message + '\n\nYou can enter your medications manually.');
-        meds = [{ id:uid(), name:'', slots:{}, instr:'' }];
+        meds = [newMed()];
         renderMeds();
         go('sc-review');
     }
@@ -612,10 +617,11 @@ function doDemo() {
     setTimeout(()=>{
         clearInterval(iv);
         meds = [
-            { id:uid(), name:'Sebamed Foaming Facewash', slots:{Morning:'08:00', Night:'21:00'}, instr:'' },
-            { id:uid(), name:'Ankclear Serum',           slots:{Night:'21:00'},                  instr:'2 pumps' },
-            { id:uid(), name:'Kev Moist Moisturiser',    slots:{Night:'21:15'},                  instr:'Apply 5 minutes after Ankclear Serum' },
-            { id:uid(), name:'Eucerin OC Sunscreen',     slots:{Morning:'08:00'},                instr:'Apply to face' },
+            { id:uid(), name:'Sebamed Foaming Facewash',  slots:{Morning:'08:00', Night:'21:00'}, instr:'',                                         duration:30,  frequency:'daily' },
+            { id:uid(), name:'Ankclear Serum',             slots:{Night:'21:00'},                  instr:'2 pumps',                                  duration:30,  frequency:'daily' },
+            { id:uid(), name:'Kev Moist Moisturiser',      slots:{Night:'21:15'},                  instr:'Apply 5 minutes after Ankclear Serum',     duration:30,  frequency:'daily' },
+            { id:uid(), name:'Eucerin OC Sunscreen',       slots:{Morning:'08:00'},                instr:'Apply to face',                            duration:null, frequency:'weekly' },
+            { id:uid(), name:'Amoxicillin 500mg',          slots:{Morning:'08:00', Night:'21:00'}, instr:'After food',                               duration:14,  frequency:'daily' },
         ];
         renderMeds();
         go('sc-review');
@@ -631,6 +637,8 @@ async function callClaude(images) {
 
     const prompt = `You are a medical assistant specialising in reading handwritten and printed prescriptions, including Indian-format prescriptions.
 
+IMPORTANT — PRIVACY: Completely ignore and DO NOT include in the output: patient name, age, date of birth, address, phone number, patient ID, or any other personal patient information. Extract ONLY medication information.
+
 Return ONLY a valid JSON array — no explanation, no markdown, just raw JSON.
 
 Format:
@@ -641,9 +649,24 @@ Format:
       "Morning": "08:00",
       "Night": "21:00"
     },
-    "instr": "special instruction or empty string"
+    "instr": "special instruction or empty string",
+    "duration": 30,
+    "frequency": "daily"
   }
 ]
+
+FIELD RULES:
+
+"duration": Number of days this medication should be taken.
+  - Look for phrases like "30 days", "2 weeks" (=14), "1 month" (=30), "3 months" (=90), "6 weeks" (=42).
+  - If no duration is specified, use null.
+
+"frequency": How often to take it. Use ONLY one of these exact strings:
+  - "daily" — every day (default if not specified)
+  - "every_2_days" — alternate days, every other day, every 2 days
+  - "every_3_days" — every 3 days, once in 3 days
+  - "weekly" — once a week, weekly
+  - "monthly" — once a month, monthly
 
 PRESCRIPTION NOTATION — read these carefully:
 
@@ -673,8 +696,7 @@ Other rules:
 - Valid slot keys: Morning, Afternoon, Evening, Night
 - Default times: Morning=08:00, Afternoon=13:00, Evening=18:00, Night=21:00
 - Capture special instructions: After food, Before food, With water, Empty stomach, etc.
-- Include ALL medications listed on the prescription
-- If duration is mentioned (e.g. "1 month", "30 days"), add it to instr`;
+- Include ALL medications listed on the prescription`;
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -698,10 +720,16 @@ Other rules:
 
     const data = await resp.json();
     const text = data.content[0].text.trim();
-    // Strip markdown code fences if present
     const clean = text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
     const parsed = JSON.parse(clean);
-    return parsed.map(m => ({ id:uid(), name:m.name||'', slots:m.slots||{}, instr:m.instr||'' }));
+    return parsed.map(m => ({
+        id: uid(),
+        name: m.name || '',
+        slots: m.slots || {},
+        instr: m.instr || '',
+        duration: (m.duration && !isNaN(m.duration)) ? parseInt(m.duration) : null,
+        frequency: VALID_FREQS.includes(m.frequency) ? m.frequency : 'daily'
+    }));
 }
 
 // ════════════════════════════════════════════════════
@@ -709,11 +737,23 @@ Other rules:
 // ════════════════════════════════════════════════════
 const SLOTS = ['Morning','Afternoon','Evening','Night'];
 const DEF_T = {Morning:'08:00',Afternoon:'13:00',Evening:'18:00',Night:'21:00'};
+const VALID_FREQS = ['daily','every_2_days','every_3_days','weekly','monthly'];
+const FREQ_LABELS = {
+    daily:        'Daily',
+    every_2_days: 'Every 2 days',
+    every_3_days: 'Every 3 days',
+    weekly:       'Weekly',
+    monthly:      'Monthly'
+};
 
 function uid() { return Math.random().toString(36).slice(2,9); }
 
+function newMed() {
+    return { id:uid(), name:'', slots:{}, instr:'', duration:null, frequency:'daily' };
+}
+
 function addMed() {
-    meds.push({ id:uid(), name:'', slots:{}, instr:'' });
+    meds.push(newMed());
     renderMeds();
     requestAnimationFrame(()=> window.scrollTo(0, document.body.scrollHeight));
 }
@@ -731,9 +771,11 @@ function toggleSlot(id, slot) {
     renderMeds();
 }
 
-function setName(id,v)  { const m=meds.find(m=>m.id===id); if(m) m.name=v; }
-function setTime(id,sl,v){ const m=meds.find(m=>m.id===id); if(m&&m.slots&&m.slots.hasOwnProperty(sl)) m.slots[sl]=v; }
-function setInstr(id,v) { const m=meds.find(m=>m.id===id); if(m) m.instr=v; }
+function setName(id,v)      { const m=meds.find(m=>m.id===id); if(m) m.name=v; }
+function setTime(id,sl,v)   { const m=meds.find(m=>m.id===id); if(m&&m.slots&&m.slots.hasOwnProperty(sl)) m.slots[sl]=v; }
+function setInstr(id,v)     { const m=meds.find(m=>m.id===id); if(m) m.instr=v; }
+function setDuration(id,v)  { const m=meds.find(m=>m.id===id); if(m) m.duration = Math.min(365,Math.max(1,parseInt(v)||DEFAULT_DURATION)); }
+function setFrequency(id,v) { const m=meds.find(m=>m.id===id); if(m&&VALID_FREQS.includes(v)) m.frequency=v; }
 
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -741,6 +783,11 @@ function renderMeds() {
     const el = document.getElementById('med-list');
     el.innerHTML = '';
     meds.forEach(m => {
+        const freqOpts = VALID_FREQS.map(f =>
+            `<option value="${f}"${m.frequency===f?' selected':''}>${FREQ_LABELS[f]}</option>`
+        ).join('');
+        const durVal = m.duration || DEFAULT_DURATION;
+
         const d = document.createElement('div');
         d.className = 'med-card';
         d.innerHTML = `
@@ -757,22 +804,21 @@ function renderMeds() {
               <div class="time-lbl">${sl}</div>
               <input type="time" class="time-inp" value="${t}" onchange="setTime('${m.id}','${sl}',this.value)">
             </div>`).join('')}
+          <div class="sched-row" style="margin-top:4px;">
+            <div class="time-lbl">Schedule</div>
+            <select class="freq-sel" onchange="setFrequency('${m.id}',this.value)">${freqOpts}</select>
+          </div>
+          <div class="sched-row">
+            <div class="time-lbl">Duration</div>
+            <input type="number" class="dur-inp" min="1" max="365" value="${durVal}"
+              onchange="setDuration('${m.id}',this.value)">
+            <span style="font-size:12px;color:var(--muted);">days</span>
+          </div>
           <textarea class="instr-inp" rows="1" placeholder="Special instructions (optional)…"
             oninput="setInstr('${m.id}',this.value)">${esc(m.instr)}</textarea>
         `;
         el.appendChild(d);
     });
-}
-
-function changeDays(delta) {
-    const inp = document.getElementById('days-input');
-    const val = Math.min(365, Math.max(1, (parseInt(inp.value) || 30) + delta));
-    inp.value = val;
-    eventDays = val;
-}
-function setDays(val) {
-    eventDays = Math.min(365, Math.max(1, parseInt(val) || 30));
-    document.getElementById('days-input').value = eventDays;
 }
 
 function confirmMeds() {
@@ -798,7 +844,7 @@ function applyMod() {
     if (!t) { alert('Please enter an instruction.'); return; }
     nlp(t);
     document.getElementById('modify-txt').value = '';
-    alert('✅ Changes applied!\n\nRe-download the .ics file or re-open Google Calendar to update your reminders.');
+    alert('✅ Changes applied!\n\nRe-download the .ics file to update your calendar reminders.');
     go('sc-cal');
 }
 
@@ -842,11 +888,43 @@ function nlp(raw) {
         }
     });
 
+    // Change [med] to every 2/3 days / weekly / monthly / daily / alternate days
+    [...t.matchAll(/change\s+(.+?)\s+to\s+(every\s+2\s+days?|every\s+3\s+days?|alternate\s+days?|every\s+other\s+day|weekly|once\s+a\s+week|monthly|once\s+a\s+month|daily|every\s+day)/g)].forEach(m=>{
+        const med=findMed(m[1]);
+        if(med) med.frequency = parseFreq(m[2]);
+    });
+
+    // Set [med] to every 2/3 days / weekly / etc.
+    [...t.matchAll(/set\s+(.+?)\s+(?:frequency\s+)?to\s+(every\s+2\s+days?|every\s+3\s+days?|alternate\s+days?|every\s+other\s+day|weekly|monthly|daily)/g)].forEach(m=>{
+        const med=findMed(m[1]);
+        if(med) med.frequency = parseFreq(m[2]);
+    });
+
+    // Set/change duration of [med] to [N] days/weeks/months
+    [...t.matchAll(/(?:set|change)\s+(?:duration\s+(?:of\s+)?)?(.+?)\s+(?:duration\s+)?to\s+(\d+)\s*(days?|weeks?|months?)/g)].forEach(m=>{
+        const med=findMed(m[1]);
+        if(med) {
+            let d=parseInt(m[2]);
+            if(m[3].startsWith('week')) d*=7;
+            if(m[3].startsWith('month')) d*=30;
+            med.duration=Math.min(365,Math.max(1,d));
+        }
+    });
+
     // add instruction for [med]: [text]
     [...t.matchAll(/(?:add|set)\s+(?:special\s+)?instructions?\s+(?:for\s+)?(.+?):\s*(.+?)(?:[.,]|$)/g)].forEach(m=>{
         const med=findMed(m[1]);
         if(med) med.instr=m[2].trim();
     });
+}
+
+function parseFreq(s) {
+    s = s.trim().toLowerCase();
+    if (s.includes('2') || s.includes('other') || s.includes('alternate')) return 'every_2_days';
+    if (s.includes('3')) return 'every_3_days';
+    if (s.includes('week')) return 'weekly';
+    if (s.includes('month')) return 'monthly';
+    return 'daily';
 }
 
 function findMed(n) {
@@ -868,7 +946,7 @@ function parseT(s) {
 function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
 
 // ════════════════════════════════════════════════════
-// SCREEN 6 – Calendar / ICS
+// SCREEN 6 – ICS generation
 // ════════════════════════════════════════════════════
 function icsTs(date, timeStr) {
     const ds = date.toISOString().slice(0,10).replace(/-/g,'');
@@ -880,22 +958,43 @@ function endTs(date, timeStr) {
     const [h,m] = timeStr.split(':');
     const end = new Date(date);
     end.setHours(parseInt(h), parseInt(m)+15);
-    const ds = date.toISOString().slice(0,10).replace(/-/g,'');
+    const ds = end.toISOString().slice(0,10).replace(/-/g,'');
     return `${ds}T${String(end.getHours()).padStart(2,'0')}${String(end.getMinutes()).padStart(2,'0')}00`;
 }
 
-// Group medications by slot → one event per slot
-function groupBySlot() {
+// Build RRULE string for a given frequency and duration (in days)
+function makeRRule(frequency, durationDays) {
+    const d = Math.max(1, Math.round(durationDays));
+    switch (frequency) {
+        case 'every_2_days': return `RRULE:FREQ=DAILY;INTERVAL=2;COUNT=${Math.ceil(d/2)}`;
+        case 'every_3_days': return `RRULE:FREQ=DAILY;INTERVAL=3;COUNT=${Math.ceil(d/3)}`;
+        case 'weekly':       return `RRULE:FREQ=WEEKLY;COUNT=${Math.max(1,Math.ceil(d/7))}`;
+        case 'monthly':      return `RRULE:FREQ=MONTHLY;COUNT=${Math.max(1,Math.ceil(d/30))}`;
+        default:             return `RRULE:FREQ=DAILY;COUNT=${d}`; // daily
+    }
+}
+
+// Group medications by (slot + duration + frequency) so that
+// meds with different durations/frequencies in the same time slot
+// become separate calendar events.
+function groupEvents() {
     const slotOrder = ['Morning','Afternoon','Evening','Night'];
     const map = {};
     meds.forEach(m => {
+        const dur = m.duration || DEFAULT_DURATION;
+        const freq = m.frequency || 'daily';
         Object.entries(m.slots).forEach(([slot, time]) => {
-            if (!map[slot]) map[slot] = { time, entries: [] };
-            map[slot].entries.push({ name: m.name, instr: m.instr });
+            const key = `${slot}|${dur}|${freq}`;
+            if (!map[key]) map[key] = { slot, time, dur, freq, entries: [] };
+            map[key].entries.push({ name: m.name, instr: m.instr });
         });
     });
-    // Return in canonical order
-    return slotOrder.filter(s => map[s]).map(s => ({ slot: s, time: map[s].time, entries: map[s].entries }));
+    // Return in canonical slot order
+    const result = [];
+    slotOrder.forEach(s => {
+        Object.values(map).filter(g => g.slot === s).forEach(g => result.push(g));
+    });
+    return result;
 }
 
 function makeICS() {
@@ -903,25 +1002,21 @@ function makeICS() {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     let ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RxRemind//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:RxRemind Medications\r\nX-WR-TIMEZONE:${tz}\r\n`;
 
-    groupBySlot().forEach((group, gi) => {
-        const { slot, time, entries } = group;
+    groupEvents().forEach((group, gi) => {
+        const { slot, time, dur, freq, entries } = group;
         const id = `rxremind-${slot.toLowerCase()}-${Date.now()}-${gi}@rxremind.app`;
 
         const names = entries.map(e => e.name).join(', ');
         const summary = entries.length > 1 ? `💊 ${slot} Routine` : `💊 ${slot} — ${names}`;
-
-        // Build description: each med on its own line with instruction if any
         const descLines = entries.map(e => e.instr ? `• ${e.name} (${e.instr})` : `• ${e.name}`);
         const desc = descLines.join('\\n');
-
-        // Alarm text lists all meds
         const alarmText = `Time for your ${slot.toLowerCase()} medications: ${names}`;
 
         ics += `BEGIN:VEVENT\r\n`;
         ics += `UID:${id}\r\n`;
         ics += `DTSTART;TZID=${tz}:${icsTs(today, time)}\r\n`;
         ics += `DTEND;TZID=${tz}:${endTs(today, time)}\r\n`;
-        ics += `RRULE:FREQ=DAILY;COUNT=${eventDays}\r\n`;
+        ics += `${makeRRule(freq, dur)}\r\n`;
         ics += `SUMMARY:${summary}\r\n`;
         ics += `DESCRIPTION:${desc}\r\n`;
         ics += `BEGIN:VALARM\r\nTRIGGER:-PT5M\r\nACTION:DISPLAY\r\nDESCRIPTION:${alarmText}\r\nEND:VALARM\r\n`;
@@ -938,7 +1033,6 @@ function dlICS() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     if (isIOS) {
-        // iOS Safari: blob download via <a> works on iOS 13+; fallback to data URI
         try {
             const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
             const url = URL.createObjectURL(blob);
@@ -948,45 +1042,15 @@ function dlICS() {
             document.body.removeChild(a);
             setTimeout(()=>URL.revokeObjectURL(url), 1000);
         } catch(e) {
-            // Fallback: open as data URI so iOS offers to open in Calendar
             window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsData);
         }
     } else {
-        // Android / Desktop
         const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'RxRemind.ics'; a.click();
     }
     setTimeout(()=>go('sc-done'), 800);
-}
-
-function openGCal() {
-    const today = new Date();
-    const ds = today.toISOString().slice(0,10).replace(/-/g,'');
-    let delay = 0;
-
-    groupBySlot().forEach(({ slot, time, entries }) => {
-        const [h, mm] = time.split(':');
-        const st = `${ds}T${h}${mm}00`;
-        const endD = new Date(today); endD.setHours(parseInt(h), parseInt(mm)+15);
-        const et = `${ds}T${String(endD.getHours()).padStart(2,'0')}${String(endD.getMinutes()).padStart(2,'0')}00`;
-
-        const names = entries.map(e => e.name).join(', ');
-        const title = entries.length > 1 ? `💊 ${slot} Routine` : `💊 ${slot} — ${names}`;
-        const details = entries.map(e => e.instr ? `${e.name}: ${e.instr}` : e.name).join('\n');
-
-        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE`
-            + `&text=${encodeURIComponent(title)}`
-            + `&dates=${st}/${et}`
-            + `&recur=${encodeURIComponent('RRULE:FREQ=DAILY;COUNT='+eventDays)}`
-            + `&details=${encodeURIComponent(details)}`;
-
-        setTimeout(() => window.open(url, '_blank'), delay);
-        delay += 400;
-    });
-
-    setTimeout(() => go('sc-done'), 700);
 }
 
 // ════════════════════════════════════════════════════
