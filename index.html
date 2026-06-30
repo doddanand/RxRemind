@@ -813,11 +813,14 @@ Examples:
 - "HS" → at bedtime = Night
 - "SOS" → as needed (skip — do not add to schedule)
 
+STRUCK-OUT / CANCELLED MEDICATIONS — critical rule:
+If a medication name, its dose line, or its entire entry has a horizontal line drawn through it (strikethrough), or if it is crossed out, scribbled over, or otherwise visually cancelled by the doctor, SKIP it entirely — do not include it in the output under any circumstances. This applies even if the medication details are otherwise legible. A struck-out item means the doctor deliberately removed it from the prescription.
+
 Other rules:
 - Valid slot keys: Morning, Afternoon, Evening, Night
 - Default times: Morning=08:00, Afternoon=13:00, Evening=18:00, Night=21:00
 - Capture special instructions: After food, Before food, With water, Empty stomach, etc.
-- Include ALL medications listed on the prescription`;
+- Include ALL non-cancelled medications listed on the prescription`;
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
