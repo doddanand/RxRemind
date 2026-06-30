@@ -235,6 +235,7 @@
             font-family: inherit; background: white;
         }
         .time-inp:focus { outline: none; border-color: var(--primary); }
+        .time-fmt-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-left: 2px; }
 
         /* ── Schedule / duration fields ───────────────── */
         .sched-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
@@ -290,9 +291,31 @@
             padding: 20px; margin-bottom: 14px; position: relative;
             background: #f6fef8;
         }
-        .cal-option h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); display: flex; align-items: center; gap: 7px; }
-        .cal-option p { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 14px; }
+        .cal-option-alt { border-color: var(--border); background: white; }
+        .cal-option h3 { font-size: 17px; font-weight: 800; margin-bottom: 8px; color: var(--text); display: flex; align-items: center; gap: 7px; }
+        .cal-option p { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
         .cal-option .works-on { font-size: 11px; color: var(--muted); margin-top: -10px; margin-bottom: 12px; }
+        .cal-divider { text-align: center; font-size: 12px; color: #bbb; margin: 4px 0 18px; letter-spacing: 1px; }
+        .gcal-progress { display: none; margin-top: 14px; }
+        .gcal-progress-line { font-size: 13px; color: var(--muted); padding: 5px 0; display: flex; align-items: center; gap: 8px; }
+        .gcal-progress-line.done { color: var(--success); font-weight: 600; }
+        .mini-spin {
+            width: 16px; height: 16px; flex-shrink: 0;
+            border: 2px solid rgba(26,115,232,0.2); border-top-color: var(--primary);
+            border-radius: 50%; animation: spin 0.7s linear infinite;
+        }
+        .android-step {
+            border: 2px dashed var(--border); border-radius: var(--radius);
+            padding: 16px; text-align: center; background: white;
+        }
+        .android-step-label { font-size: 12px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; margin-bottom: 6px; }
+        .android-step-name { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 14px; }
+        .android-step-hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+        .android-presync {
+            background: #fff7e6; border: 1px solid #f0c36d; border-radius: var(--radius);
+            padding: 12px 14px; font-size: 12.5px; line-height: 1.5; color: #6b4f10; margin-bottom: 12px;
+        }
+        .android-ics-fallback { margin-top: 10px; font-size: 12px; }
 
         /* ── Done screen ──────────────────────────────── */
         .done-icon { font-size: 84px; text-align: center; margin: 12px 0; animation: popIn 0.5s ease; display: block; }
@@ -353,7 +376,7 @@
         <span class="greet-emoji" id="greet-emoji">🌅</span>
         <div class="greet-title" id="greet-title">Good Morning!</div>
         <div class="greet-brand">Welcome to RxRemind</div>
-        <div class="greet-q">Would you like to upload your prescription now?</div>
+        <div class="greet-q">Would you like to upload your prescription(s) now?</div>
 
         <!-- Privacy notice -->
         <div class="privacy-note">
@@ -398,6 +421,7 @@
         </div>
 
         <div class="spacer"></div>
+        <button class="btn btn-ghost" onclick="cancelToHome()">✕ Cancel</button>
         <div class="safe"></div>
     </div>
 
@@ -415,6 +439,7 @@
                 💡 Claude AI is reading your prescription and extracting all medications and schedules automatically…
             </div>
         </div>
+        <button class="btn btn-ghost" onclick="cancelToHome()">✕ Cancel</button>
         <div class="safe"></div>
     </div>
 
@@ -428,6 +453,7 @@
         <button class="add-med" onclick="addMed()">+ Add another medication</button>
         <button class="btn btn-primary" onclick="confirmMeds()">✓ Confirm & Continue</button>
         <button class="btn btn-ghost" onclick="go('sc-changes')" style="margin-top:10px;">✏️ Make Changes via Text</button>
+        <button class="btn btn-ghost" onclick="cancelToHome()" style="margin-top:10px;">✕ Cancel</button>
         <div class="safe"></div>
     </div>
 
@@ -447,6 +473,8 @@
                 <li>"Change morning routine to 10 AM"</li>
                 <li>"Change Amoxicillin to every 2 days"</li>
                 <li>"Set duration of Metformin to 60 days"</li>
+                <li>"Change duration to 3 days"</li>
+                <li>"Switch to 24 hour format"</li>
             </ul>
         </div>
         <textarea class="big-txt" id="change-txt" placeholder="Type your changes here…"></textarea>
@@ -460,15 +488,26 @@
     <!-- ╚══════════════════════════════╝ -->
     <div class="screen" id="sc-cal">
         <h2>📅 Add to Calendar</h2>
-        <p class="sub">Your reminders are ready! Download the calendar file to add all your medication reminders to your phone.</p>
+        <p class="sub" id="cal-sub">Your reminders are ready! Tap the button below that matches your phone.</p>
 
-        <div class="cal-option">
-            <h3>⬇️ Download to Phone Calendar</h3>
-            <p>Downloads a calendar file (.ics) that adds all your medication reminders directly to your phone's default calendar — including pop-up notifications 5 minutes before each dose. Each medication's individual duration and frequency is honoured.</p>
-            <div class="works-on">📱 Works on: iPhone (Apple Calendar) &nbsp;·&nbsp; Android (Google Calendar) &nbsp;·&nbsp; Outlook &nbsp;·&nbsp; Any calendar app</div>
-            <button class="btn btn-success" onclick="dlICS()">⬇️ Download .ics File</button>
+        <!-- Option 1: Android — guided one-tap-per-reminder flow -->
+        <div class="cal-option" id="android-card">
+            <h3>🤖 I have an ANDROID phone</h3>
+            <p>Tap below. We'll guide you through adding each reminder one at a time — just tap <strong>"Save"</strong> when your Calendar app opens.</p>
+            <button class="btn btn-primary" id="gcal-btn" onclick="startAndroidFlow()">Start Adding Reminders</button>
+            <div class="gcal-progress" id="gcal-progress"></div>
         </div>
 
+        <div class="cal-divider" id="cal-divider">— or —</div>
+
+        <!-- Option 2: iPhone — .ics native preview -->
+        <div class="cal-option cal-option-alt" id="ios-card">
+            <h3>🍎 I have an IPHONE</h3>
+            <p>Tap below, then tap <strong>"Add All"</strong> when your Calendar app shows the reminders.</p>
+            <button class="btn btn-outline" onclick="dlICS()">Add Reminders to iPhone Calendar</button>
+        </div>
+
+        <button class="btn btn-ghost" onclick="cancelToHome()" style="margin-top:10px;">✕ Cancel</button>
         <div class="safe"></div>
     </div>
 
@@ -510,6 +549,9 @@ let meds = [];
 let imgs = [];
 let apiKey = CLAUDE_API_KEY;
 const DEFAULT_DURATION = 30;
+let timeFormat = '12';   // '12' (default, AM/PM) or '24' — switch via a text instruction
+let androidGroups = [];   // event groups for the guided Android add-one-by-one flow
+let androidStepIndex = 0;
 
 // ════════════════════════════════════════════════════
 // GREETING + API KEY INIT
@@ -542,6 +584,51 @@ function go(id, stepOverride) {
     const step = stepOverride || STEP[id] || 1;
     for (let i=1;i<=5;i++) {
         document.getElementById('s'+i).className = 'step'+(i<step?' done':i===step?' active':'');
+    }
+    if (id === 'sc-cal') setupCalScreen();
+}
+
+let cancelRequested = false;
+function cancelToHome() {
+    if (confirm('Cancel and return to the Home screen?\n\nAnything you\'ve entered so far will be lost.')) {
+        cancelRequested = true;
+        startOver();
+    }
+}
+
+// ════════════════════════════════════════════════════
+// PLATFORM DETECTION
+// ════════════════════════════════════════════════════
+function detectPlatform() {
+    const ua = navigator.userAgent || '';
+    if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) return 'ios';
+    if (/Android/.test(ua)) return 'android';
+    return 'other';
+}
+
+function setupCalScreen() {
+    const platform = detectPlatform();
+    const androidCard = document.getElementById('android-card');
+    const iosCard = document.getElementById('ios-card');
+    const divider = document.getElementById('cal-divider');
+    const sub = document.getElementById('cal-sub');
+
+    if (platform === 'android') {
+        androidCard.style.display = '';
+        iosCard.style.display = 'none';
+        divider.style.display = 'none';
+        sub.textContent = 'Your reminders are ready! Tap below to add them to your calendar.';
+    } else if (platform === 'ios') {
+        androidCard.style.display = 'none';
+        iosCard.style.display = '';
+        divider.style.display = 'none';
+        sub.textContent = 'Your reminders are ready! Tap below to add them to your calendar.';
+    } else {
+        // Desktop / unrecognized device — show both, let the person choose.
+        androidCard.style.display = '';
+        iosCard.style.display = '';
+        divider.style.display = '';
+        sub.textContent = "Your reminders are ready! Tap the button below that matches your phone.";
     }
 }
 
@@ -585,6 +672,7 @@ function delImg(i) { imgs.splice(i,1); renderPrev(); }
 async function doProcess() {
     if (!imgs.length) { alert('Please upload at least one prescription image.'); return; }
     if (!apiKey) { alert('Please enter your Anthropic API key first (see the setup banner at the top).'); return; }
+    cancelRequested = false;
     go('sc-proc');
 
     const steps = ['Analyzing uploaded images…','Identifying medications…','Extracting schedules…','Finalizing your list…'];
@@ -595,11 +683,13 @@ async function doProcess() {
     try {
         const extracted = await callClaude(imgs);
         clearInterval(iv);
+        if (cancelRequested) return;
         meds = extracted.length ? extracted : [newMed()];
         renderMeds();
         go('sc-review');
     } catch(e) {
         clearInterval(iv);
+        if (cancelRequested) return;
         console.error(e);
         alert('Could not read prescription automatically.\n\nError: ' + e.message + '\n\nYou can enter your medications manually.');
         meds = [newMed()];
@@ -609,6 +699,7 @@ async function doProcess() {
 }
 
 function doDemo() {
+    cancelRequested = false;
     go('sc-proc');
     const steps = ['Analyzing uploaded images…','Identifying medications…','Extracting schedules…','Finalizing your list…'];
     let si = 0;
@@ -616,6 +707,7 @@ function doDemo() {
     const iv = setInterval(()=>{ if(++si<steps.length) el.textContent=steps[si]; }, 650);
     setTimeout(()=>{
         clearInterval(iv);
+        if (cancelRequested) return;
         meds = [
             { id:uid(), name:'Sebamed Foaming Facewash',  slots:{Morning:'08:00', Night:'21:00'}, instr:'',                                         duration:30,  frequency:'daily' },
             { id:uid(), name:'Ankclear Serum',             slots:{Night:'21:00'},                  instr:'2 pumps',                                  duration:30,  frequency:'daily' },
@@ -760,6 +852,9 @@ function addMed() {
 
 function delMed(id) {
     if (meds.length===1) { alert('You need at least one medication.'); return; }
+    const m = meds.find(m=>m.id===id);
+    const label = (m && m.name.trim()) ? m.name.trim() : 'this medication';
+    if (!confirm(`Remove ${label} from your reminder schedule?`)) return;
     meds = meds.filter(m=>m.id!==id);
     renderMeds();
 }
@@ -772,8 +867,20 @@ function toggleSlot(id, slot) {
 }
 
 function setName(id,v)      { const m=meds.find(m=>m.id===id); if(m) m.name=v; }
-function setTime(id,sl,v)   { const m=meds.find(m=>m.id===id); if(m&&m.slots&&m.slots.hasOwnProperty(sl)) m.slots[sl]=v; }
+function setTime(id,sl,v)   { const m=meds.find(m=>m.id===id); if(m&&m.slots&&m.slots.hasOwnProperty(sl)) { m.slots[sl]=v; renderMeds(); } }
 function setInstr(id,v)     { const m=meds.find(m=>m.id===id); if(m) m.instr=v; }
+
+// Formats a 24-hour "HH:MM" string for display, honouring the current
+// timeFormat setting ('12' = AM/PM, '24' = 24-hour clock).
+function fmtTime(t) {
+    if (!t) return '';
+    const [hStr, mStr] = t.split(':');
+    const h = parseInt(hStr)||0, m = parseInt(mStr)||0;
+    if (timeFormat === '24') return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    const ap = h >= 12 ? 'PM' : 'AM';
+    let h12 = h % 12; if (h12 === 0) h12 = 12;
+    return `${h12}:${String(m).padStart(2,'0')} ${ap}`;
+}
 function setDuration(id,v)  { const m=meds.find(m=>m.id===id); if(m) m.duration = Math.min(365,Math.max(1,parseInt(v)||DEFAULT_DURATION)); }
 function setFrequency(id,v) { const m=meds.find(m=>m.id===id); if(m&&VALID_FREQS.includes(v)) m.frequency=v; }
 
@@ -802,7 +909,8 @@ function renderMeds() {
           ${Object.entries(m.slots).map(([sl,t])=>`
             <div class="time-row">
               <div class="time-lbl">${sl}</div>
-              <input type="time" class="time-inp" value="${t}" onchange="setTime('${m.id}','${sl}',this.value)">
+              <input type="time" class="time-inp" value="${t}" lang="${timeFormat==='12'?'en-US':'en-GB'}" onchange="setTime('${m.id}','${sl}',this.value)">
+              <span class="time-fmt-label">${fmtTime(t)}</span>
             </div>`).join('')}
           <div class="sched-row" style="margin-top:4px;">
             <div class="time-lbl">Schedule</div>
@@ -844,12 +952,16 @@ function applyMod() {
     if (!t) { alert('Please enter an instruction.'); return; }
     nlp(t);
     document.getElementById('modify-txt').value = '';
-    alert('✅ Changes applied!\n\nRe-download the .ics file to update your calendar reminders.');
+    alert('✅ Changes applied!\n\nUse the button on the next screen again to update your calendar reminders. Note: this adds new reminders — please delete any outdated ones from your calendar app if needed.');
     go('sc-cal');
 }
 
 function nlp(raw) {
     const t = raw.toLowerCase();
+
+    // Switch time display format: "switch to 24 hour format", "use 12-hour clock", etc.
+    if (/\b(24[\s-]?hour|military\s*time)\b/.test(t)) timeFormat = '24';
+    else if (/\b(12[\s-]?hour|am\s*\/?\s*pm)\b/.test(t)) timeFormat = '12';
 
     // Change [med] to [slot]
     [...t.matchAll(/change\s+(.+?)\s+to\s+(morning|afternoon|evening|night)/g)].forEach(m=>{
@@ -898,6 +1010,24 @@ function nlp(raw) {
     [...t.matchAll(/set\s+(.+?)\s+(?:frequency\s+)?to\s+(every\s+2\s+days?|every\s+3\s+days?|alternate\s+days?|every\s+other\s+day|weekly|monthly|daily)/g)].forEach(m=>{
         const med=findMed(m[1]);
         if(med) med.frequency = parseFreq(m[2]);
+    });
+
+    // Change duration for ALL medications at once: "Change Duration to 3 days",
+    // "Set the duration to 60 days", "Change all medications to 3 days", etc.
+    // (No medicine name given, so it's applied to every medication.)
+    [...t.matchAll(/(?:change|set)\s+(?:the\s+)?duration(?:s)?\s+(?:for\s+all(?:\s+medications?)?\s+)?to\s+(\d+)\s*(days?|weeks?|months?)/g)].forEach(m=>{
+        let d=parseInt(m[1]);
+        if(m[2].startsWith('week')) d*=7;
+        if(m[2].startsWith('month')) d*=30;
+        d=Math.min(365,Math.max(1,d));
+        meds.forEach(med=>med.duration=d);
+    });
+    [...t.matchAll(/(?:change|set)\s+all(?:\s+medications?)?\s+(?:durations?\s+)?to\s+(\d+)\s*(days?|weeks?|months?)/g)].forEach(m=>{
+        let d=parseInt(m[1]);
+        if(m[2].startsWith('week')) d*=7;
+        if(m[2].startsWith('month')) d*=30;
+        d=Math.min(365,Math.max(1,d));
+        meds.forEach(med=>med.duration=d);
     });
 
     // Set/change duration of [med] to [N] days/weeks/months
@@ -997,35 +1127,83 @@ function groupEvents() {
     return result;
 }
 
+// Builds one BEGIN:VEVENT…END:VEVENT block (as a string) for a single group.
+function buildVEvent(group, gi, tz, today) {
+    const { slot, time, dur, freq, entries } = group;
+    const id = `rxremind-${slot.toLowerCase()}-${Date.now()}-${gi}@rxremind.app`;
+    const names = entries.map(e => e.name).join(', ');
+    const summary = entries.length > 1 ? `💊 ${slot} Routine` : `💊 ${slot} — ${names}`;
+    const descLines = entries.map(e => e.instr ? `• ${e.name} (${e.instr})` : `• ${e.name}`);
+    const desc = descLines.join('\\n');
+    const alarmText = `Time for your ${slot.toLowerCase()} medications: ${names}`;
+
+    let v = `BEGIN:VEVENT\r\n`;
+    v += `UID:${id}\r\n`;
+    v += `DTSTART;TZID=${tz}:${icsTs(today, time)}\r\n`;
+    v += `DTEND;TZID=${tz}:${endTs(today, time)}\r\n`;
+    v += `${makeRRule(freq, dur)}\r\n`;
+    v += `SUMMARY:${summary}\r\n`;
+    v += `DESCRIPTION:${desc}\r\n`;
+    v += `BEGIN:VALARM\r\nTRIGGER:-PT5M\r\nACTION:DISPLAY\r\nDESCRIPTION:${alarmText}\r\nEND:VALARM\r\n`;
+    v += `BEGIN:VALARM\r\nTRIGGER:PT0S\r\nACTION:DISPLAY\r\nDESCRIPTION:${alarmText}\r\nEND:VALARM\r\n`;
+    v += `END:VEVENT\r\n`;
+    return v;
+}
+
+// Combined .ics with every event — used for iPhone, where Safari's native
+// preview correctly shows and adds ALL events at once via "Add All".
 function makeICS() {
     const today = new Date();
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
     let ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RxRemind//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:RxRemind Medications\r\nX-WR-TIMEZONE:${tz}\r\n`;
-
-    groupEvents().forEach((group, gi) => {
-        const { slot, time, dur, freq, entries } = group;
-        const id = `rxremind-${slot.toLowerCase()}-${Date.now()}-${gi}@rxremind.app`;
-
-        const names = entries.map(e => e.name).join(', ');
-        const summary = entries.length > 1 ? `💊 ${slot} Routine` : `💊 ${slot} — ${names}`;
-        const descLines = entries.map(e => e.instr ? `• ${e.name} (${e.instr})` : `• ${e.name}`);
-        const desc = descLines.join('\\n');
-        const alarmText = `Time for your ${slot.toLowerCase()} medications: ${names}`;
-
-        ics += `BEGIN:VEVENT\r\n`;
-        ics += `UID:${id}\r\n`;
-        ics += `DTSTART;TZID=${tz}:${icsTs(today, time)}\r\n`;
-        ics += `DTEND;TZID=${tz}:${endTs(today, time)}\r\n`;
-        ics += `${makeRRule(freq, dur)}\r\n`;
-        ics += `SUMMARY:${summary}\r\n`;
-        ics += `DESCRIPTION:${desc}\r\n`;
-        ics += `BEGIN:VALARM\r\nTRIGGER:-PT5M\r\nACTION:DISPLAY\r\nDESCRIPTION:${alarmText}\r\nEND:VALARM\r\n`;
-        ics += `BEGIN:VALARM\r\nTRIGGER:PT0S\r\nACTION:DISPLAY\r\nDESCRIPTION:${alarmText}\r\nEND:VALARM\r\n`;
-        ics += `END:VEVENT\r\n`;
-    });
-
+    groupEvents().forEach((group, gi) => { ics += buildVEvent(group, gi, tz, today); });
     ics += `END:VCALENDAR`;
     return ics;
+}
+
+// Single-event .ics — used for Android's guided step-by-step flow, since
+// Google Calendar's "open downloaded file" import only reliably honours the
+// FIRST event in a multi-event file. One event per file avoids that bug.
+function makeSingleEventICS(group) {
+    const today = new Date();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    let ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RxRemind//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-TIMEZONE:${tz}\r\n`;
+    ics += buildVEvent(group, 0, tz, today);
+    ics += `END:VCALENDAR`;
+    return ics;
+}
+
+// Formats a JS Date as UTC "YYYYMMDDTHHMMSSZ", the timestamp format Google
+// Calendar's link API expects.
+function toUTCStamp(date) {
+    const p = n => String(n).padStart(2,'0');
+    return `${date.getUTCFullYear()}${p(date.getUTCMonth()+1)}${p(date.getUTCDate())}T${p(date.getUTCHours())}${p(date.getUTCMinutes())}${p(date.getUTCSeconds())}Z`;
+}
+
+// Builds a Google Calendar "quick add" link for one event group. Opening it
+// takes the user straight into Google Calendar (app or web) with the event
+// — including the recurrence rule — already filled in. No file download,
+// no "Open with" picker, no multi-event "Save all" dialog: just Calendar's
+// normal single "Save" button.
+function buildGCalLink(group) {
+    const { slot, time, dur, freq, entries } = group;
+    const names = entries.map(e => e.name).join(', ');
+    const summary = entries.length > 1 ? `💊 ${slot} Routine` : `💊 ${slot} — ${names}`;
+    const details = entries.map(e => e.instr ? `• ${e.name} (${e.instr})` : `• ${e.name}`).join('\n');
+
+    const [h, m] = time.split(':').map(Number);
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
+    const end = new Date(start.getTime() + 15*60000);
+
+    const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: summary,
+        dates: `${toUTCStamp(start)}/${toUTCStamp(end)}`,
+        details: details,
+        recur: makeRRule(freq, dur)
+    });
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 function dlICS() {
@@ -1033,17 +1211,11 @@ function dlICS() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     if (isIOS) {
-        try {
-            const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'RxRemind.ics';
-            document.body.appendChild(a); a.click();
-            document.body.removeChild(a);
-            setTimeout(()=>URL.revokeObjectURL(url), 1000);
-        } catch(e) {
-            window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsData);
-        }
+        // IMPORTANT: no `download` attribute here. Navigating directly to a
+        // text/calendar resource lets Safari recognize the MIME type and show
+        // its native "Add All Events" preview sheet over the page, instead of
+        // silently saving the file to the Files/Downloads app.
+        window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsData);
     } else {
         const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
         const a = document.createElement('a');
@@ -1051,6 +1223,83 @@ function dlICS() {
         a.download = 'RxRemind.ics'; a.click();
     }
     setTimeout(()=>go('sc-done'), 800);
+}
+
+// ════════════════════════════════════════════════════
+// SCREEN 6 – Android guided add (one manual "Save" tap per reminder)
+//
+// NOTE on design: Android's Web Share API does not currently accept
+// .ics/text-calendar files (Chromium's permitted-file-type list covers
+// pdf/audio/image/video/plain-text only) — so sharing an .ics file always
+// falls back to a plain download, which is what produces the "downloaded,
+// now go open it, then tap Save all" detour. To avoid that entirely, this
+// flow instead opens a Google Calendar "quick add" link per reminder
+// (calendar.google.com/calendar/render) — it opens straight in the
+// Calendar app with the event pre-filled (including the recurrence), no
+// file download at all, and only one normal "Save" button. A plain .ics
+// download is kept as a manual fallback link for anyone not using Google
+// Calendar as their default calendar app.
+// ════════════════════════════════════════════════════
+function startAndroidFlow() {
+    androidGroups = groupEvents();
+    androidStepIndex = 0;
+    if (!androidGroups.length) {
+        alert('No reminders to add yet — please go back and add at least one medication.');
+        return;
+    }
+    renderAndroidStep();
+}
+
+function renderAndroidStep() {
+    const el = document.getElementById('gcal-progress');
+    el.style.display = 'block';
+
+    if (androidStepIndex >= androidGroups.length) {
+        el.innerHTML = '<div class="gcal-progress-line done">✓ All reminders added!</div>';
+        setTimeout(()=>go('sc-done'), 900);
+        return;
+    }
+
+    const g = androidGroups[androidStepIndex];
+    const label = g.entries.length > 1 ? `${g.slot} Routine` : `${g.slot} — ${g.entries[0].name}`;
+    const reminder = androidStepIndex === 0 ? `
+        <div class="android-presync">
+            📋 <strong>Before you start:</strong> make sure this phone is signed into the Google account you use for Calendar, and that Calendar is turned on for that account (Settings → Accounts → Google → Calendar). That's what makes your reminders show up.
+        </div>` : '';
+    el.innerHTML = `
+        ${reminder}
+        <div class="android-step">
+            <div class="android-step-label">Step ${androidStepIndex+1} of ${androidGroups.length}</div>
+            <div class="android-step-name">💊 ${esc(label)}</div>
+            <button class="btn btn-primary" onclick="addAndroidStep()">Tap to Add This Reminder</button>
+            <div class="android-step-hint">Google Calendar will open with this reminder already filled in — tap <strong>Save</strong> there, then come back here for the next one.</div>
+            <button class="btn btn-ghost android-ics-fallback" onclick="addAndroidStepICS()">Not using Google Calendar? Tap here instead</button>
+        </div>`;
+}
+
+// Primary path: open a Google Calendar "quick add" link — no file
+// download, opens directly in the Calendar app pre-filled with the event.
+function addAndroidStep() {
+    const g = androidGroups[androidStepIndex];
+    window.open(buildGCalLink(g), '_blank');
+    androidStepIndex++;
+    renderAndroidStep();
+}
+
+// Manual fallback for Android phones where Google Calendar isn't the
+// default calendar app (e.g. Samsung Calendar, Outlook). Downloads a
+// single-event .ics file; tapping the downloaded file hands it to
+// whichever calendar app is installed.
+function addAndroidStepICS() {
+    const g = androidGroups[androidStepIndex];
+    const icsData = makeSingleEventICS(g);
+    const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `RxRemind-${androidStepIndex+1}.ics`;
+    a.click();
+    androidStepIndex++;
+    renderAndroidStep();
 }
 
 // ════════════════════════════════════════════════════
