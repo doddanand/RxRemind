@@ -315,6 +315,16 @@
             padding: 12px 14px; font-size: 12.5px; line-height: 1.5; color: #6b4f10; margin-bottom: 12px;
         }
         .android-ics-fallback { margin-top: 10px; font-size: 12px; }
+        .ios-browser-warn {
+            background: #fff7e6; border: 1px solid #f0c36d; border-radius: var(--radius);
+            padding: 12px 14px; font-size: 12.5px; line-height: 1.5; color: #6b4f10; margin-bottom: 12px;
+        }
+        .ios-confirm-box {
+            border: 2px dashed var(--border); border-radius: var(--radius);
+            padding: 16px; text-align: center; background: white; margin-top: 14px;
+        }
+        .ios-confirm-q { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 14px; line-height: 1.4; }
+        .ios-confirm-btns { display: flex; flex-direction: column; gap: 8px; }
 
         /* ── Done screen ──────────────────────────────── */
         .done-icon { font-size: 84px; text-align: center; margin: 12px 0; animation: popIn 0.5s ease; display: block; }
@@ -502,8 +512,12 @@
         <!-- Option 2: iPhone — .ics native preview -->
         <div class="cal-option cal-option-alt" id="ios-card">
             <h3>🍎 I have an IPHONE</h3>
-            <p>Tap below, then tap <strong>"Add All"</strong> when your Calendar app shows the reminders.</p>
+            <div class="ios-browser-warn" id="ios-browser-warn" style="display:none;">
+                ⚠️ This only works reliably in <strong>Safari</strong>. You appear to be using a different browser — please open this page in Safari, then try again.
+            </div>
+            <p>Tap below. Your Calendar app will show a preview of the reminders — tap <strong>"Add All"</strong> there, then come back here to confirm.</p>
             <button class="btn btn-outline" onclick="dlICS()">Add Reminders to iPhone Calendar</button>
+            <div class="ios-confirm" id="ios-confirm" style="display:none;"></div>
         </div>
 
         <button class="btn btn-ghost" onclick="cancelToHome()" style="margin-top:10px;">✕ Cancel</button>
@@ -605,12 +619,27 @@ function detectPlatform() {
     return 'other';
 }
 
+// True only for actual Mobile Safari. Other iOS browsers (Firefox iOS,
+// Chrome iOS, Edge iOS, etc.) are all required by Apple to use the same
+// WebKit engine, but they do NOT get Safari's deep system integration —
+// navigating to a data:text/calendar URI does not reliably trigger the
+// native "Add All Events" Calendar sheet in them, so the .ics flow can
+// silently do nothing even though the page can't detect that failure.
+function isIOSSafari() {
+    const ua = navigator.userAgent || '';
+    if (!/iPad|iPhone|iPod/.test(ua) || window.MSStream) return false;
+    if (/CriOS|FxiOS|EdgiOS|OPiOS|mercury|DuckDuckGo/i.test(ua)) return false;
+    return /Safari/.test(ua);
+}
+
 function setupCalScreen() {
     const platform = detectPlatform();
     const androidCard = document.getElementById('android-card');
     const iosCard = document.getElementById('ios-card');
     const divider = document.getElementById('cal-divider');
     const sub = document.getElementById('cal-sub');
+    const iosConfirm = document.getElementById('ios-confirm');
+    if (iosConfirm) { iosConfirm.style.display = 'none'; iosConfirm.innerHTML = ''; }
 
     if (platform === 'android') {
         androidCard.style.display = '';
@@ -622,6 +651,7 @@ function setupCalScreen() {
         iosCard.style.display = '';
         divider.style.display = 'none';
         sub.textContent = 'Your reminders are ready! Tap below to add them to your calendar.';
+        document.getElementById('ios-browser-warn').style.display = isIOSSafari() ? 'none' : 'block';
     } else {
         // Desktop / unrecognized device — show both, let the person choose.
         androidCard.style.display = '';
@@ -1202,14 +1232,41 @@ function dlICS() {
         // text/calendar resource lets Safari recognize the MIME type and show
         // its native "Add All Events" preview sheet over the page, instead of
         // silently saving the file to the Files/Downloads app.
+        // NOTE: this trick is Safari-specific — there is no JS callback that
+        // tells us whether the native sheet actually appeared or whether the
+        // user tapped "Add All", so we can NOT just assume success. Instead
+        // we ask the person to confirm what they actually saw.
         window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsData);
+        setTimeout(showIOSConfirm, 800);
     } else {
         const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'RxRemind.ics'; a.click();
+        go('sc-done');
     }
-    setTimeout(()=>go('sc-done'), 800);
+}
+
+function showIOSConfirm() {
+    const el = document.getElementById('ios-confirm');
+    el.style.display = 'block';
+    el.innerHTML = `
+        <div class="ios-confirm-box">
+            <div class="ios-confirm-q">Did your Calendar app show the reminders, and did you tap <strong>"Add All"</strong>?</div>
+            <div class="ios-confirm-btns">
+                <button class="btn btn-primary" onclick="go('sc-done')">Yes, I added them</button>
+                <button class="btn btn-ghost" onclick="iosRetryHelp()">No, nothing happened</button>
+            </div>
+        </div>`;
+}
+
+function iosRetryHelp() {
+    const el = document.getElementById('ios-confirm');
+    el.innerHTML = `
+        <div class="ios-confirm-box">
+            <div class="ios-confirm-q">Please make sure you're using the <strong>Safari</strong> browser (not Firefox, Chrome, or another app), then tap "Add Reminders to iPhone Calendar" above again.</div>
+            <button class="btn btn-outline" onclick="document.getElementById('ios-confirm').style.display='none'">OK, I'll try again</button>
+        </div>`;
 }
 
 // ════════════════════════════════════════════════════
