@@ -229,12 +229,41 @@
         .pill.on { border-color: var(--primary); background: #e8f0fe; color: var(--primary); }
         .time-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
         .time-lbl { font-size: 12px; color: var(--muted); width: 72px; flex-shrink: 0; }
-        .time-inp {
-            padding: 6px 10px; border: 1px solid var(--border);
-            border-radius: 8px; font-size: 14px; color: var(--text);
-            font-family: inherit; background: white;
+        /* time display button — replaces native <input type="time"> */
+        .time-display {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 96px; padding: 6px 12px;
+            border: 2px solid var(--primary); border-radius: 8px;
+            font-size: 15px; font-weight: 700; color: var(--primary);
+            background: white; cursor: pointer; user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        .time-inp:focus { outline: none; border-color: var(--primary); }
+        .time-display:active { background: var(--primary); color: white; }
+
+        /* custom time-picker bottom sheet */
+        .tp-overlay {
+            display: none; position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.45); align-items: flex-end;
+        }
+        .tp-overlay.open { display: flex; }
+        .tp-sheet {
+            background: white; border-radius: 18px 18px 0 0;
+            padding: 20px 20px 36px; width: 100%; max-width: 480px; margin: 0 auto;
+        }
+        .tp-title { font-size: 15px; font-weight: 800; text-align: center; margin-bottom: 18px; color: var(--text); }
+        .tp-selects { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 22px; }
+        .tp-sel {
+            font-size: 20px; font-weight: 700; padding: 10px 6px;
+            border: 2px solid var(--border); border-radius: 10px;
+            background: white; color: var(--text); font-family: inherit;
+            -webkit-appearance: none; text-align: center;
+        }
+        .tp-sel-hr  { width: 62px; }
+        .tp-sel-min { width: 62px; }
+        .tp-sel-ap  { width: 72px; }
+        .tp-colon { font-size: 22px; font-weight: 900; color: var(--text); margin: 0 2px; }
+        .tp-btns { display: flex; gap: 10px; }
+        .tp-btns .btn { flex: 1; }
 
         /* ── Schedule / duration fields ───────────────── */
         .sched-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
@@ -499,12 +528,15 @@
         <h2>📅 Add to Calendar</h2>
         <p class="sub" id="cal-sub">Your reminders are ready! Tap the button below that matches your phone.</p>
 
-        <!-- Option 1: Android — guided one-tap-per-reminder flow -->
+        <!-- Option 1: Android — single .ics download, one Import tap in Google Calendar -->
         <div class="cal-option" id="android-card">
             <h3>🤖 I have an ANDROID phone</h3>
-            <p>Tap below. We'll guide you through adding each reminder one at a time — just tap <strong>"Save"</strong> when your Calendar app opens.</p>
-            <button class="btn btn-primary" id="gcal-btn" onclick="startAndroidFlow()">Start Adding Reminders</button>
-            <div class="gcal-progress" id="gcal-progress"></div>
+            <div class="android-presync">
+                📋 <strong>Before you start:</strong> make sure this phone is signed into the Google account you use for Google Calendar, and that Calendar sync is turned on (Settings → Accounts → Google → Calendar).
+            </div>
+            <p>Tap below to download a reminders file. When the download notification appears at the bottom of your screen, tap <strong>"Open"</strong> — Google Calendar will show all your reminders at once. Tap <strong>"Import"</strong> there to add them all in one go.</p>
+            <button class="btn btn-primary" onclick="dlICS()">Download Reminders File</button>
+            <div id="android-confirm" style="display:none;"></div>
         </div>
 
         <div class="cal-divider" id="cal-divider">— or —</div>
@@ -547,6 +579,35 @@
 
 </div><!-- /app -->
 
+<!-- ════════════════════════════════════════════════
+     CUSTOM TIME PICKER — always 12-hour, locale-independent
+     ════════════════════════════════════════════════ -->
+<div class="tp-overlay" id="tp-overlay">
+    <div class="tp-sheet">
+        <div class="tp-title">⏰ Set <span id="tp-slot-label"></span> Time</div>
+        <div class="tp-selects">
+            <select id="tp-hour" class="tp-sel tp-sel-hr">
+                <option>1</option><option>2</option><option>3</option><option>4</option>
+                <option>5</option><option>6</option><option>7</option><option>8</option>
+                <option>9</option><option>10</option><option>11</option><option>12</option>
+            </select>
+            <span class="tp-colon">:</span>
+            <select id="tp-min" class="tp-sel tp-sel-min">
+                <option>00</option><option>05</option><option>10</option><option>15</option>
+                <option>20</option><option>25</option><option>30</option><option>35</option>
+                <option>40</option><option>45</option><option>50</option><option>55</option>
+            </select>
+            <select id="tp-ampm" class="tp-sel tp-sel-ap">
+                <option>AM</option><option>PM</option>
+            </select>
+        </div>
+        <div class="tp-btns">
+            <button class="btn btn-ghost" onclick="closeTimePicker()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmTimePicker()">Set Time</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // ════════════════════════════════════════════════════
 // CONFIG — fill in your Anthropic API key before sharing
@@ -563,6 +624,7 @@ let imgs = [];
 let apiKey = CLAUDE_API_KEY;
 const DEFAULT_DURATION = 30;
 let timeFormat = '12';   // '12' (default, AM/PM) or '24' — switch via a text instruction
+let tpTarget = null;     // { id, slot } for the currently-open custom time picker
 let androidGroups = [];   // event groups for the guided Android add-one-by-one flow
 let androidStepIndex = 0;
 
@@ -640,6 +702,8 @@ function setupCalScreen() {
     const sub = document.getElementById('cal-sub');
     const iosConfirm = document.getElementById('ios-confirm');
     if (iosConfirm) { iosConfirm.style.display = 'none'; iosConfirm.innerHTML = ''; }
+    const andConfirm = document.getElementById('android-confirm');
+    if (andConfirm) { andConfirm.style.display = 'none'; andConfirm.innerHTML = ''; }
 
     if (platform === 'android') {
         androidCard.style.display = '';
@@ -902,6 +966,47 @@ function setName(id,v)      { const m=meds.find(m=>m.id===id); if(m) m.name=v; }
 function setTime(id,sl,v)   { const m=meds.find(m=>m.id===id); if(m&&m.slots&&m.slots.hasOwnProperty(sl)) { m.slots[sl]=v; renderMeds(); } }
 function setInstr(id,v)     { const m=meds.find(m=>m.id===id); if(m) m.instr=v; }
 
+// Formats a stored "HH:MM" value for display, honouring timeFormat.
+function fmtTimeDisplay(t) {
+    if (!t) return '--:-- AM';
+    const [hStr, mStr] = t.split(':');
+    const h = parseInt(hStr) || 0, m = parseInt(mStr) || 0;
+    if (timeFormat === '24') return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    const ap = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2,'0')} ${ap}`;
+}
+
+// ── Custom time picker (always 12-hour, device-locale independent) ────────
+function openTimePicker(id, slot, currentVal) {
+    const [h24, mm] = (currentVal || '08:00').split(':').map(Number);
+    const ap    = h24 >= 12 ? 'PM' : 'AM';
+    const h12   = h24 % 12 || 12;
+    const mRnd  = Math.round(mm / 5) * 5 % 60; // round to nearest 5 min
+    tpTarget = { id, slot };
+    document.getElementById('tp-slot-label').textContent = slot;
+    document.getElementById('tp-hour').value  = h12;
+    document.getElementById('tp-min').value   = String(mRnd).padStart(2,'0');
+    document.getElementById('tp-ampm').value  = ap;
+    document.getElementById('tp-overlay').classList.add('open');
+}
+
+function confirmTimePicker() {
+    const h12  = parseInt(document.getElementById('tp-hour').value);
+    const min  = document.getElementById('tp-min').value;
+    const ampm = document.getElementById('tp-ampm').value;
+    let h24 = h12 % 12;
+    if (ampm === 'PM') h24 += 12;
+    const val = `${String(h24).padStart(2,'0')}:${min}`;
+    closeTimePicker();
+    if (tpTarget) setTime(tpTarget.id, tpTarget.slot, val);
+}
+
+function closeTimePicker() {
+    document.getElementById('tp-overlay').classList.remove('open');
+    tpTarget = null;
+}
+
 function setDuration(id,v)  { const m=meds.find(m=>m.id===id); if(m) m.duration = Math.min(365,Math.max(1,parseInt(v)||DEFAULT_DURATION)); }
 function setFrequency(id,v) { const m=meds.find(m=>m.id===id); if(m&&VALID_FREQS.includes(v)) m.frequency=v; }
 
@@ -930,7 +1035,7 @@ function renderMeds() {
           ${Object.entries(m.slots).map(([sl,t])=>`
             <div class="time-row">
               <div class="time-lbl">${sl}</div>
-              <input type="time" class="time-inp" value="${t}" lang="${timeFormat==='12'?'en-US':'en-GB'}" onchange="setTime('${m.id}','${sl}',this.value)">
+              <div class="time-display" onclick="openTimePicker('${m.id}','${sl}','${t}')">${fmtTimeDisplay(t)}</div>
             </div>`).join('')}
           <div class="sched-row" style="margin-top:4px;">
             <div class="time-lbl">Schedule</div>
@@ -1231,23 +1336,42 @@ function dlICS() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     if (isIOS) {
-        // IMPORTANT: no `download` attribute here. Navigating directly to a
-        // text/calendar resource lets Safari recognize the MIME type and show
-        // its native "Add All Events" preview sheet over the page, instead of
-        // silently saving the file to the Files/Downloads app.
-        // NOTE: this trick is Safari-specific — there is no JS callback that
-        // tells us whether the native sheet actually appeared or whether the
-        // user tapped "Add All", so we can NOT just assume success. Instead
-        // we ask the person to confirm what they actually saw.
+        // Safari-specific: navigating to a data:text/calendar URI triggers
+        // the native "Add All Events" sheet. No download, no Files app.
         window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsData);
         setTimeout(showIOSConfirm, 800);
     } else {
+        // Android (and desktop fallback): download the multi-event .ics file.
+        // Android's download notification has an "Open" button — tapping it
+        // hands the file to Google Calendar which shows all events and an
+        // "Import" button. No Files app needed if they use the notification.
         const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'RxRemind.ics'; a.click();
-        go('sc-done');
+        showAndroidConfirm();
     }
+}
+
+function showAndroidConfirm() {
+    const el = document.getElementById('android-confirm');
+    el.style.display = 'block';
+    el.innerHTML = `
+        <div class="ios-confirm-box">
+            <div class="ios-confirm-q">A file called <strong>RxRemind.ics</strong> was downloaded.<br><br>Tap <strong>"Open"</strong> in the download notification at the bottom of your screen, then tap <strong>"Import"</strong> in Google Calendar.</div>
+            <div class="ios-confirm-btns">
+                <button class="btn btn-primary" onclick="go('sc-done')">Done — all reminders added ✓</button>
+                <button class="btn btn-ghost" onclick="androidDownloadHelp()">Can't find the notification?</button>
+            </div>
+        </div>`;
+}
+
+function androidDownloadHelp() {
+    document.getElementById('android-confirm').innerHTML = `
+        <div class="ios-confirm-box">
+            <div class="ios-confirm-q">Open your <strong>Files</strong> app, go to <strong>Downloads</strong>, and tap <strong>RxRemind.ics</strong>. Choose Google Calendar when asked which app to open it with, then tap <strong>"Import"</strong>.</div>
+            <button class="btn btn-outline" onclick="go('sc-done')">Done — all reminders added ✓</button>
+        </div>`;
 }
 
 function showIOSConfirm() {
