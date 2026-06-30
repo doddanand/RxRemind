@@ -235,7 +235,6 @@
             font-family: inherit; background: white;
         }
         .time-inp:focus { outline: none; border-color: var(--primary); }
-        .time-fmt-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-left: 2px; }
 
         /* ── Schedule / duration fields ───────────────── */
         .sched-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
@@ -870,17 +869,6 @@ function setName(id,v)      { const m=meds.find(m=>m.id===id); if(m) m.name=v; }
 function setTime(id,sl,v)   { const m=meds.find(m=>m.id===id); if(m&&m.slots&&m.slots.hasOwnProperty(sl)) { m.slots[sl]=v; renderMeds(); } }
 function setInstr(id,v)     { const m=meds.find(m=>m.id===id); if(m) m.instr=v; }
 
-// Formats a 24-hour "HH:MM" string for display, honouring the current
-// timeFormat setting ('12' = AM/PM, '24' = 24-hour clock).
-function fmtTime(t) {
-    if (!t) return '';
-    const [hStr, mStr] = t.split(':');
-    const h = parseInt(hStr)||0, m = parseInt(mStr)||0;
-    if (timeFormat === '24') return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-    const ap = h >= 12 ? 'PM' : 'AM';
-    let h12 = h % 12; if (h12 === 0) h12 = 12;
-    return `${h12}:${String(m).padStart(2,'0')} ${ap}`;
-}
 function setDuration(id,v)  { const m=meds.find(m=>m.id===id); if(m) m.duration = Math.min(365,Math.max(1,parseInt(v)||DEFAULT_DURATION)); }
 function setFrequency(id,v) { const m=meds.find(m=>m.id===id); if(m&&VALID_FREQS.includes(v)) m.frequency=v; }
 
@@ -910,7 +898,6 @@ function renderMeds() {
             <div class="time-row">
               <div class="time-lbl">${sl}</div>
               <input type="time" class="time-inp" value="${t}" lang="${timeFormat==='12'?'en-US':'en-GB'}" onchange="setTime('${m.id}','${sl}',this.value)">
-              <span class="time-fmt-label">${fmtTime(t)}</span>
             </div>`).join('')}
           <div class="sched-row" style="margin-top:4px;">
             <div class="time-lbl">Schedule</div>
