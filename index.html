@@ -528,15 +528,15 @@
         <h2>📅 Add to Calendar</h2>
         <p class="sub" id="cal-sub">Your reminders are ready! Tap the button below that matches your phone.</p>
 
-        <!-- Option 1: Android — single .ics download, one Import tap in Google Calendar -->
+        <!-- Option 1: Android — step-by-step single-event .ics per reminder -->
         <div class="cal-option" id="android-card">
             <h3>🤖 I have an ANDROID phone</h3>
             <div class="android-presync">
                 📋 <strong>Before you start:</strong> make sure this phone is signed into the Google account you use for Google Calendar, and that Calendar sync is turned on (Settings → Accounts → Google → Calendar).
             </div>
-            <p>Tap below to download a reminders file. When the download notification appears at the bottom of your screen, tap <strong>"Open"</strong> — Google Calendar will show all your reminders at once. Tap <strong>"Import"</strong> there to add them all in one go.</p>
-            <button class="btn btn-primary" onclick="dlICS()">Download Reminders File</button>
-            <div id="android-confirm" style="display:none;"></div>
+            <p>We'll add your reminders one at a time — tap the button for each reminder, then tap <strong>"Save"</strong> in the Calendar screen that opens, then come back here for the next one.</p>
+            <button class="btn btn-primary" onclick="startAndroidFlow()">Start Adding Reminders</button>
+            <div id="gcal-progress" class="gcal-progress"></div>
         </div>
 
         <div class="cal-divider" id="cal-divider">— or —</div>
@@ -702,8 +702,9 @@ function setupCalScreen() {
     const sub = document.getElementById('cal-sub');
     const iosConfirm = document.getElementById('ios-confirm');
     if (iosConfirm) { iosConfirm.style.display = 'none'; iosConfirm.innerHTML = ''; }
-    const andConfirm = document.getElementById('android-confirm');
-    if (andConfirm) { andConfirm.style.display = 'none'; andConfirm.innerHTML = ''; }
+    const gcalProgress = document.getElementById('gcal-progress');
+    if (gcalProgress) { gcalProgress.style.display = 'none'; gcalProgress.innerHTML = ''; }
+    androidGroups = []; androidStepIndex = 0;
 
     if (platform === 'android') {
         androidCard.style.display = '';
@@ -1298,81 +1299,14 @@ function makeSingleEventICS(group) {
     return ics;
 }
 
-// Formats a JS Date as UTC "YYYYMMDDTHHMMSSZ", the timestamp format Google
-// Calendar's link API expects.
-function toUTCStamp(date) {
-    const p = n => String(n).padStart(2,'0');
-    return `${date.getUTCFullYear()}${p(date.getUTCMonth()+1)}${p(date.getUTCDate())}T${p(date.getUTCHours())}${p(date.getUTCMinutes())}${p(date.getUTCSeconds())}Z`;
-}
-
-// Builds a Google Calendar "quick add" link for one event group. Opening it
-// takes the user straight into Google Calendar (app or web) with the event
-// — including the recurrence rule — already filled in. No file download,
-// no "Open with" picker, no multi-event "Save all" dialog: just Calendar's
-// normal single "Save" button.
-function buildGCalLink(group) {
-    const { slot, time, dur, freq, entries } = group;
-    const names = entries.map(e => e.name).join(', ');
-    const summary = entries.length > 1 ? `💊 ${slot} Routine` : `💊 ${slot} — ${names}`;
-    const details = entries.map(e => e.instr ? `• ${e.name} (${e.instr})` : `• ${e.name}`).join('\n');
-
-    const [h, m] = time.split(':').map(Number);
-    const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, 0);
-    const end = new Date(start.getTime() + 15*60000);
-
-    const params = new URLSearchParams({
-        action: 'TEMPLATE',
-        text: summary,
-        dates: `${toUTCStamp(start)}/${toUTCStamp(end)}`,
-        details: details,
-        recur: makeRRule(freq, dur)
-    });
-    return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
+// iOS Safari: navigate to data:text/calendar to trigger the native
+// "Add All Events" sheet. Called from the iOS card button.
 function dlICS() {
     const icsData = makeICS();
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-    if (isIOS) {
-        // Safari-specific: navigating to a data:text/calendar URI triggers
-        // the native "Add All Events" sheet. No download, no Files app.
-        window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsData);
-        setTimeout(showIOSConfirm, 800);
-    } else {
-        // Android (and desktop fallback): download the multi-event .ics file.
-        // Android's download notification has an "Open" button — tapping it
-        // hands the file to Google Calendar which shows all events and an
-        // "Import" button. No Files app needed if they use the notification.
-        const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'RxRemind.ics'; a.click();
-        showAndroidConfirm();
-    }
+    window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsData);
+    setTimeout(showIOSConfirm, 800);
 }
 
-function showAndroidConfirm() {
-    const el = document.getElementById('android-confirm');
-    el.style.display = 'block';
-    el.innerHTML = `
-        <div class="ios-confirm-box">
-            <div class="ios-confirm-q">A file called <strong>RxRemind.ics</strong> was downloaded.<br><br>Tap <strong>"Open"</strong> in the download notification at the bottom of your screen, then tap <strong>"Import"</strong> in Google Calendar.</div>
-            <div class="ios-confirm-btns">
-                <button class="btn btn-primary" onclick="go('sc-done')">Done — all reminders added ✓</button>
-                <button class="btn btn-ghost" onclick="androidDownloadHelp()">Can't find the notification?</button>
-            </div>
-        </div>`;
-}
-
-function androidDownloadHelp() {
-    document.getElementById('android-confirm').innerHTML = `
-        <div class="ios-confirm-box">
-            <div class="ios-confirm-q">Open your <strong>Files</strong> app, go to <strong>Downloads</strong>, and tap <strong>RxRemind.ics</strong>. Choose Google Calendar when asked which app to open it with, then tap <strong>"Import"</strong>.</div>
-            <button class="btn btn-outline" onclick="go('sc-done')">Done — all reminders added ✓</button>
-        </div>`;
-}
 
 function showIOSConfirm() {
     const el = document.getElementById('ios-confirm');
@@ -1397,19 +1331,7 @@ function iosRetryHelp() {
 }
 
 // ════════════════════════════════════════════════════
-// SCREEN 6 – Android guided add (one manual "Save" tap per reminder)
-//
-// NOTE on design: Android's Web Share API does not currently accept
-// .ics/text-calendar files (Chromium's permitted-file-type list covers
-// pdf/audio/image/video/plain-text only) — so sharing an .ics file always
-// falls back to a plain download, which is what produces the "downloaded,
-// now go open it, then tap Save all" detour. To avoid that entirely, this
-// flow instead opens a Google Calendar "quick add" link per reminder
-// (calendar.google.com/calendar/render) — it opens straight in the
-// Calendar app with the event pre-filled (including the recurrence), no
-// file download at all, and only one normal "Save" button. A plain .ics
-// download is kept as a manual fallback link for anyone not using Google
-// Calendar as their default calendar app.
+// SCREEN 6 – Android guided add (one .ics per reminder, step by step)
 // ════════════════════════════════════════════════════
 function startAndroidFlow() {
     androidGroups = groupEvents();
@@ -1442,32 +1364,22 @@ function renderAndroidStep() {
         <div class="android-step">
             <div class="android-step-label">Step ${androidStepIndex+1} of ${androidGroups.length}</div>
             <div class="android-step-name">💊 ${esc(label)}</div>
-            <button class="btn btn-primary" onclick="addAndroidStep()">Tap to Add This Reminder</button>
-            <div class="android-step-hint">Google Calendar will open with this reminder already filled in — tap <strong>Save</strong> there, then come back here for the next one.</div>
-            <button class="btn btn-ghost android-ics-fallback" onclick="addAndroidStepICS()">Not using Google Calendar? Tap here instead</button>
+            <button class="btn btn-primary" onclick="addAndroidStepICS()">Add This Reminder</button>
+            <div class="android-step-hint">Your Calendar app will open — tap <strong>Save</strong> (or <strong>Add</strong>) there, then come back here and tap this button for the next reminder.</div>
         </div>`;
 }
 
-// Primary path: open a Google Calendar "quick add" link — no file
-// download, opens directly in the Calendar app pre-filled with the event.
-function addAndroidStep() {
-    const g = androidGroups[androidStepIndex];
-    window.open(buildGCalLink(g), '_blank');
-    androidStepIndex++;
-    renderAndroidStep();
-}
-
-// Manual fallback for Android phones where Google Calendar isn't the
-// default calendar app (e.g. Samsung Calendar, Outlook). Downloads a
-// single-event .ics file; tapping the downloaded file hands it to
-// whichever calendar app is installed.
+// Downloads a single-event .ics for the current step. The download
+// notification's "Open" tap hands it to whichever calendar app is
+// installed (Google Calendar, Samsung Calendar, etc.) which then shows
+// a simple Save/Add button for that one event.
 function addAndroidStepICS() {
     const g = androidGroups[androidStepIndex];
     const icsData = makeSingleEventICS(g);
     const blob = new Blob([icsData], {type:'text/calendar;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `RxRemind-${androidStepIndex+1}.ics`;
+    a.download = `RxRemind-step${androidStepIndex+1}.ics`;
     a.click();
     androidStepIndex++;
     renderAndroidStep();
